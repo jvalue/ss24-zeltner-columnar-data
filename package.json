@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "nodejs-polars": "^0.10.0"
+  }
+}
