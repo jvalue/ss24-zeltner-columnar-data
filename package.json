@@ -1,8 +1,13 @@
 {
+  "scripts": {
+    "ts": "npx ts-node"
+  },
   "devDependencies": {
+    "@types/node": "^20.12.7",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "nodejs-polars": "^0.10.0"
+    "nodejs-polars": "^0.10.0",
+    "ts-node": "^10.9.2"
   }
 }
