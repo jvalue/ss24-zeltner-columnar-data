@@ -1,0 +1,46 @@
+{
+  "name": "jayvee",
+  "displayName": "Jayvee",
+  "description": "Support for the Jayvee language",
+  "engines": {
+    "vscode": "^1.56.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "jayvee",
+        "aliases": [
+          "Jayvee",
+          "jayvee"
+        ],
+        "extensions": [
+          ".jv"
+        ],
+        "configuration": "language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "jayvee",
+        "scopeName": "source.jayvee",
+        "path": "jayvee.tmLanguage.json"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onLanguage:jayvee"
+  ],
+  "main": "extension.cjs",
+  "bugs": {
+    "url": "https://github.com/jvalue/jayvee/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jvalue/jayvee.git"
+  },
+  "homepage": "https://github.com/jvalue/jayvee",
+  "version": "0.0.0"
+}

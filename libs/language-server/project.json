@@ -1,0 +1,76 @@
+{
+  "name": "language-server",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/language-server/src",
+  "projectType": "library",
+  "targets": {
+    "generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "langium generate -f libs/language-server/langium-config.json",
+          // Workaround until https://github.com/langium/langium/issues/740 is resolved:
+          "node tools/scripts/fix-monarch-grammar-escape.mjs",
+          "node tools/scripts/language-server/generate-stdlib.mjs"
+        ],
+        "parallel": false
+      }
+    },
+    "build": {
+      "dependsOn": ["generate"],
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/language-server",
+        "main": "libs/language-server/src/index.ts",
+        "tsConfig": "libs/language-server/tsconfig.lib.json"
+      },
+      "configurations": {
+        "dev": {},
+        "prod": {}
+      },
+      "defaultConfiguration": "dev"
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/language-server/jest.config.ts",
+        "passWithNoTests": false
+      }
+    },
+    "pre-publish": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "commands": [
+          "node tools/scripts/relax-peer-dependency-versions.mjs language-server",
+          "node tools/scripts/add-package-json-version.mjs language-server",
+          "node tools/scripts/publish.mjs language-server false"
+        ],
+        "parallel": false
+      }
+    },
+    "publish": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["pre-publish"],
+      "options": {
+        "commands": ["node tools/scripts/publish.mjs language-server true"],
+        "parallel": false
+      }
+    },
+    "pack": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["pre-publish"],
+      "options": {
+        "commands": ["node tools/scripts/pack.mjs language-server"],
+        "parallel": false
+      }
+    }
+  },
+  "tags": []
+}

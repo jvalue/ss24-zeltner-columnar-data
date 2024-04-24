@@ -1,0 +1,20 @@
+{
+  "projectName": "Jayvee",
+  "languages": [
+    {
+      "id": "jayvee",
+      "grammar": "src/grammar/main.langium",
+      "fileExtensions": [".jv"],
+      "textMate": {
+        "out": "../../apps/vs-code-extension/assets/jayvee.tmLanguage.json"
+      },
+      "monarch": {
+        "out": "../../libs/monaco-editor/src/lib/jayvee.monarch.ts"
+      },
+      "prism": {
+        "out": "../../apps/docs/src/theme/prism-jayvee.js"
+      }
+    }
+  ],
+  "out": "src/lib/ast/generated"
+}

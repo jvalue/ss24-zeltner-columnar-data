@@ -1,0 +1,63 @@
+{
+  "root": true,
+  "extends": "@jvalue/eslint-config-jvalue",
+  "ignorePatterns": ["**/*"],
+  "plugins": ["@nx"],
+  "parserOptions": {
+    "project": ["./tsconfig.base.json"]
+  },
+  "overrides": [
+    {
+      "files": ["*.ts", ".tsx"],
+      "rules": {
+        "import/no-unresolved": "off"
+      }
+    },
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "rules": {
+        "@nx/enforce-module-boundaries": [
+          "error",
+          {
+            "enforceBuildableLibDependency": true,
+            "allow": [],
+            "depConstraints": [
+              {
+                "sourceTag": "*",
+                "onlyDependOnLibsWithTags": ["*"]
+              }
+            ]
+          }
+        ],
+        "@typescript-eslint/consistent-type-imports": [
+          "warn",
+          {
+            "fixStyle": "inline-type-imports"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "extends": ["plugin:@nx/typescript"],
+      "rules": {}
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "extends": ["plugin:@nx/javascript"],
+      "rules": {}
+    },
+    {
+      "files": ["*.spec.ts", "*.spec.tsx", "*.spec.js", "*.spec.jsx"],
+      "plugins": ["jest"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        // you should turn the original rule off *only* for test files
+        "@typescript-eslint/unbound-method": "off",
+        "jest/unbound-method": "error"
+      }
+    }
+  ]
+}

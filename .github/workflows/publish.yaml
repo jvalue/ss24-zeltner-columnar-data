@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2023 Friedrich-Alexander-Universitat Erlangen-Nurnberg
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Publish Packages
+
+on:
+  release:
+    types: [created]
+
+# https://docs.github.com/en/actions/guides/publishing-nodejs-packages
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 'lts/*'
+          always-auth: true
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - name: Publish interpreter-lib
+        run: npx nx run interpreter-lib:publish:prod
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish language server
+        run: npx nx run language-server:publish:prod
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish interpreter
+        run: npx nx run interpreter:publish:prod
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish language server web worker
+        run: npx nx run language-server-web-worker:publish:prod
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish monaco editor
+        run: npx nx run monaco-editor:publish:prod
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Pack VS Code extension
+        run: npx nx run vs-code-extension:pack:prod
+      - id: get_release
+        uses: bruceadams/get-release@v1.3.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload packed VS Code extension as release artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./dist/apps/vs-code-extension/jayvee.vsix
+          asset_name: jayvee.vsix
+          asset_content_type: application/octet-stream
