@@ -9,6 +9,7 @@ import {
   type InternalValueRepresentation,
   type ValueType,
 } from '@jvalue/jayvee-language-server';
+import { pl } from 'nodejs-polars';
 
 import { SQLColumnTypeVisitor } from '../value-types/visitors/sql-column-type-visitor';
 import { SQLValueRepresentationVisitor } from '../value-types/visitors/sql-value-representation-visitor';
@@ -33,14 +34,14 @@ export type TableRow = Record<string, InternalValueRepresentation>;
  */
 
 export interface Table2 extends IOTypeImplementation<IOType.TABLE> {
-  withColumn(name: string, column: TableColumn): Table2;
+  withColumn(name: string, column: pl.Series): Table2;
   withRow(row: TableRow): Table2;
   whitoutRow(rowId: number): Table2;
   withoutRows(rowIds: number[]): Table2;
   getNumberOfRows(): number;
   getNumberOfColumns(): number;
   hasColumn(name: string): boolean;
-  getColumns(): ReadonlyMap<string, TableColumn>;
+  getColumns(): ReadonlyMap<string, pl.Series>;
   getRow(rowId: number): Map<string, InternalValueRepresentation>;
   generateDropTableStatement(tableName: string): string;
   generateInsertValuesStatement(tableName: string): string;
@@ -52,14 +53,14 @@ export interface Table2 extends IOTypeImplementation<IOType.TABLE> {
 export abstract class AbstractTable implements Table2 {
   public readonly ioType = IOType.TABLE;
 
-  abstract withColumn(name: string, column: TableColumn): Table2;
+  abstract withColumn(name: string, column: pl.Series): Table2;
   abstract withRow(row: TableRow): Table2;
   abstract whitoutRow(rowId: number): Table2;
   abstract withoutRows(rowIds: number[]): Table2;
   abstract getNumberOfRows(): number;
   abstract getNumberOfColumns(): number;
   abstract hasColumn(name: string): boolean;
-  abstract getColumns(): ReadonlyMap<string, TableColumn>;
+  abstract getColumns(): ReadonlyMap<string, pl.Series>;
   abstract getRow(rowId: number): Map<string, InternalValueRepresentation>;
   generateDropTableStatement(tableName: string): string {
     return `DROP TABLE IF EXISTS "${tableName}";`;
@@ -68,6 +69,65 @@ export abstract class AbstractTable implements Table2 {
   abstract generateCreateTableStatement(tableName: string): string;
   abstract clone(): Table2;
   abstract acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
+}
+
+export class PolarsTable extends AbstractTable {
+  private df: pl.DataFrame = pl.DataFrame();
+
+  public constructor(df: pl.DataFrame) {
+    super();
+    this.df = df;
+  }
+
+  override withColumn(name: string, column: pl.Series): PolarsTable {
+    const ndf = this.df.withColumn(column).withColumnRenamed(column.name, name);
+    return new PolarsTable(ndf);
+  }
+  override withRow(row: TableRow): PolarsTable {
+    throw new Error('Method not implemented.');
+  }
+  override whitoutRow(rowId: number): PolarsTable {
+    throw new Error('Method not implemented.');
+  }
+  override withoutRows(rowIds: number[]): PolarsTable {
+    throw new Error('Method not implemented.');
+  }
+  override getNumberOfRows(): number {
+    return this.df.height;
+  }
+  override getNumberOfColumns(): number {
+    return this.df.width;
+  }
+  override hasColumn(name: string): boolean {
+    try {
+      this.df.getColumn(name);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  override getColumns(): ReadonlyMap<string, pl.Series> {
+    const m = new Map();
+    this.df.getColumns().forEach((s) => {
+      m.set(s.name, s);
+    });
+    return m;
+  }
+  override getRow(rowId: number): Map<string, any> {
+    throw new Error('Method not implemented.');
+  }
+  override generateInsertValuesStatement(tableName: string): string {
+    throw new Error('Method not implemented.');
+  }
+  override generateCreateTableStatement(tableName: string): string {
+    throw new Error('Method not implemented.');
+  }
+  override clone(): Table2 {
+    throw new Error('Method not implemented.');
+  }
+  override acceptVisitor<R>(visitor: IoTypeVisitor<R>): R {
+    throw new Error('Method not implemented.');
+  }
 }
 
 export class Table implements IOTypeImplementation<IOType.TABLE> {
