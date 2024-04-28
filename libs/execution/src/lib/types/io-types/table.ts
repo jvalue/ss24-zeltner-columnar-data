@@ -31,6 +31,45 @@ export type TableRow = Record<string, InternalValueRepresentation>;
  * Invariant: the shape of the table is always a rectangle.
  * This means all columns must have the same size.
  */
+
+export interface Table2 extends IOTypeImplementation<IOType.TABLE> {
+  withColumn(name: string, column: TableColumn): Table2;
+  withRow(row: TableRow): Table2;
+  whitoutRow(rowId: number): Table2;
+  withoutRows(rowIds: number[]): Table2;
+  getNumberOfRows(): number;
+  getNumberOfColumns(): number;
+  hasColumn(name: string): boolean;
+  getColumns(): ReadonlyMap<string, TableColumn>;
+  getRow(rowId: number): Map<string, InternalValueRepresentation>;
+  generateDropTableStatement(tableName: string): string;
+  generateInsertValuesStatement(tableName: string): string;
+  generateCreateTableStatement(tableName: string): string;
+  clone(): Table2;
+  acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
+}
+
+export abstract class AbstractTable implements Table2 {
+  public readonly ioType = IOType.TABLE;
+
+  abstract withColumn(name: string, column: TableColumn): Table2;
+  abstract withRow(row: TableRow): Table2;
+  abstract whitoutRow(rowId: number): Table2;
+  abstract withoutRows(rowIds: number[]): Table2;
+  abstract getNumberOfRows(): number;
+  abstract getNumberOfColumns(): number;
+  abstract hasColumn(name: string): boolean;
+  abstract getColumns(): ReadonlyMap<string, TableColumn>;
+  abstract getRow(rowId: number): Map<string, InternalValueRepresentation>;
+  generateDropTableStatement(tableName: string): string {
+    return `DROP TABLE IF EXISTS "${tableName}";`;
+  }
+  abstract generateInsertValuesStatement(tableName: string): string;
+  abstract generateCreateTableStatement(tableName: string): string;
+  abstract clone(): Table2;
+  abstract acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
+}
+
 export class Table implements IOTypeImplementation<IOType.TABLE> {
   public readonly ioType = IOType.TABLE;
 
