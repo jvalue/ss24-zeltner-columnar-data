@@ -18,6 +18,7 @@ import {
   type IOTypeImplementation,
   type IoTypeVisitor,
 } from './io-type-implementation';
+import { zip, zipWith } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 
 export interface TableColumn<
   T extends InternalValueRepresentation = InternalValueRepresentation,
@@ -113,8 +114,11 @@ export class PolarsTable extends AbstractTable {
     });
     return m;
   }
-  override getRow(rowId: number): Map<string, any> {
-    throw new Error('Method not implemented.');
+  override getRow(rowId: number): Map<string, InternalValueRepresentation> {
+    const rs = this.df.row(rowId);
+    const cnames = this.df.columns;
+    const zs = zip(cnames, rs);
+    return zs;
   }
   override generateInsertValuesStatement(tableName: string): string {
     throw new Error('Method not implemented.');
@@ -130,9 +134,7 @@ export class PolarsTable extends AbstractTable {
   }
 }
 
-export class Table implements IOTypeImplementation<IOType.TABLE> {
-  public readonly ioType = IOType.TABLE;
-
+export class TsTable implements AbstractTable {
   private numberOfRows = 0;
 
   private columns = new Map<string, TableColumn>();
