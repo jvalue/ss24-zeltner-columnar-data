@@ -6,10 +6,12 @@
 import { strict as assert } from 'assert';
 
 import {
+  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   IOType,
   type InternalValueRepresentation,
   type ValueType,
 } from '@jvalue/jayvee-language-server';
+import { zip } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { pl } from 'nodejs-polars';
 
 import { SQLColumnTypeVisitor } from '../value-types/visitors/sql-column-type-visitor';
@@ -19,7 +21,7 @@ import {
   type IOTypeImplementation,
   type IoTypeVisitor,
 } from './io-type-implementation';
-import { zip, zipWith } from 'fp-ts/lib/ReadonlyNonEmptyArray';
+import { AbstractValueType } from 'libs/language-server/src/lib/ast/wrappers/value-type/abstract-value-type';
 
 export interface TableColumn<
   T extends InternalValueRepresentation = InternalValueRepresentation,
@@ -35,11 +37,11 @@ export type TableRow = Record<string, InternalValueRepresentation>;
  * This means all columns must have the same size.
  */
 
-export interface Table2 extends IOTypeImplementation<IOType.TABLE> {
-  withColumn(name: string, column: pl.Series): Table2;
-  withRow(row: TableRow): Table2;
-  whitoutRow(rowId: number): Table2;
-  withoutRows(rowIds: number[]): Table2;
+export interface Table extends IOTypeImplementation<IOType.TABLE> {
+  withColumn(name: string, column: pl.Series): Table;
+  withRow(row: TableRow): Table;
+  whitoutRow(rowId: number): Table;
+  withoutRows(rowIds: number[]): Table;
   getNumberOfRows(): number;
   getNumberOfColumns(): number;
   hasColumn(name: string): boolean;
@@ -48,17 +50,17 @@ export interface Table2 extends IOTypeImplementation<IOType.TABLE> {
   generateDropTableStatement(tableName: string): string;
   generateInsertValuesStatement(tableName: string): string;
   generateCreateTableStatement(tableName: string): string;
-  clone(): Table2;
+  clone(): Table;
   acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
 }
 
-export abstract class AbstractTable implements Table2 {
+export abstract class AbstractTable implements Table {
   public readonly ioType = IOType.TABLE;
 
-  abstract withColumn(name: string, column: pl.Series): Table2;
-  abstract withRow(row: TableRow): Table2;
-  abstract whitoutRow(rowId: number): Table2;
-  abstract withoutRows(rowIds: number[]): Table2;
+  abstract withColumn(name: string, column: pl.Series): Table;
+  abstract withRow(row: TableRow): Table;
+  abstract whitoutRow(rowId: number): Table;
+  abstract withoutRows(rowIds: number[]): Table;
   abstract getNumberOfRows(): number;
   abstract getNumberOfColumns(): number;
   abstract hasColumn(name: string): boolean;
@@ -69,7 +71,7 @@ export abstract class AbstractTable implements Table2 {
   }
   abstract generateInsertValuesStatement(tableName: string): string;
   abstract generateCreateTableStatement(tableName: string): string;
-  abstract clone(): Table2;
+  abstract clone(): Table;
   abstract acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
 }
 
@@ -116,10 +118,7 @@ export class PolarsTable extends AbstractTable {
     return m;
   }
   override getRow(rowId: number): Map<string, InternalValueRepresentation> {
-    const rs = this.df.row(rowId);
-    const cnames = this.df.columns;
-    const zs = zip(cnames, rs);
-    return zs;
+    throw new Error('Method not implemented');
   }
   override generateInsertValuesStatement(tableName: string): string {
     throw new Error('Method not implemented.');
@@ -127,7 +126,7 @@ export class PolarsTable extends AbstractTable {
   override generateCreateTableStatement(tableName: string): string {
     throw new Error('Method not implemented.');
   }
-  override clone(): Table2 {
+  override clone(): Table {
     throw new Error('Method not implemented.');
   }
   override acceptVisitor<R>(visitor: IoTypeVisitor<R>): R {
