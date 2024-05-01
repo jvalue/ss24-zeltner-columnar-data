@@ -20,7 +20,6 @@ import {
   type IOTypeImplementation,
   type IoTypeVisitor,
 } from './io-type-implementation';
-import { AbstractValueType } from 'libs/language-server/src/lib/ast/wrappers/value-type/abstract-value-type';
 
 export interface TableColumn<
   T extends InternalValueRepresentation = InternalValueRepresentation,
