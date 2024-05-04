@@ -14,7 +14,7 @@ import { type BinaryFile } from '../types/io-types/filesystem-node-file-binary';
 import { type TextFile } from '../types/io-types/filesystem-node-file-text';
 import { type IoTypeVisitor } from '../types/io-types/io-type-implementation';
 import { type Sheet } from '../types/io-types/sheet';
-import { type Table } from '../types/io-types/table';
+import { PolarsTable, type TsTable } from '../types/io-types/table';
 
 import { type DebugGranularity } from './debug-configuration';
 
@@ -31,7 +31,14 @@ export class DebugLogVisitor implements IoTypeVisitor<void> {
     private wrapperFactories: WrapperFactoryProvider,
   ) {}
 
-  visitTable(table: Table): void {
+  visitPolarsTable(table: PolarsTable): void {
+    if (this.debugGranularity === 'minimal') {
+      return;
+    }
+    this.log(table.df.toString());
+  }
+
+  visitTsTable(table: TsTable): void {
     if (this.debugGranularity === 'minimal') {
       return;
     }
@@ -41,9 +48,10 @@ export class DebugLogVisitor implements IoTypeVisitor<void> {
       `Table with ${numberOfRows} rows and ${table.getNumberOfColumns()} columns.`,
     );
 
-    const headers = [...table.getColumns().entries()]
-      .map(([columnName, column]) => {
-        return `${columnName} (${column.valueType.getName()})`;
+    const headers = table
+      .getColumns()
+      .map((column) => {
+        return `${column.name} (\${column.dtype.toString()})`;
       })
       .join(' | ');
     this.log(`[Header] ${headers}`);
@@ -53,8 +61,8 @@ export class DebugLogVisitor implements IoTypeVisitor<void> {
         break;
       }
 
-      const row = table.getRow(i);
-      const rowData = [...row.values()]
+      const rowData = table
+        .getRow(i)
         .map((cell) => internalValueToString(cell, this.wrapperFactories))
         .join(' | ');
       this.log(`[Row ${i}] ${rowData}`);
