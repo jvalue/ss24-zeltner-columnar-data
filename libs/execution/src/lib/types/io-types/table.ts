@@ -5,30 +5,95 @@
 import { strict as assert } from 'assert';
 
 import {
-  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   IOType,
-  type InternalValueRepresentation,
+  InternalValueRepresentation,
+  PolarsAtomicInternalValueRepresentation,
+  PolarsInternalValueRepresentation,
+  type TsInternalValueRepresentation,
   type ValueType,
 } from '@jvalue/jayvee-language-server';
-import { zip } from 'fp-ts/lib/ReadonlyNonEmptyArray';
-import { pl } from 'nodejs-polars';
-
-import { SQLColumnTypeVisitor } from '../value-types/visitors/sql-column-type-visitor';
-import { SQLValueRepresentationVisitor } from '../value-types/visitors/sql-value-representation-visitor';
+import { DataType, pl } from 'nodejs-polars';
 
 import {
   type IOTypeImplementation,
   type IoTypeVisitor,
 } from './io-type-implementation';
+import { zip, zipWith } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 
-export interface TableColumn<
-  T extends InternalValueRepresentation = InternalValueRepresentation,
-> {
-  values: T[];
-  valueType: ValueType;
+export interface TableColumn {
+  getValueType(): ValueType;
+  getName(): string;
+  as_array(): readonly InternalValueRepresentation[];
+  nth(n: number): InternalValueRepresentation | undefined;
 }
 
-export type TableRow = Record<string, InternalValueRepresentation>;
+export abstract class AbstractTableColumn implements TableColumn {
+  abstract getValueType(): ValueType<InternalValueRepresentation>;
+  abstract getName(): string;
+  abstract as_array(): readonly InternalValueRepresentation[];
+  abstract nth(n: number): InternalValueRepresentation | undefined;
+}
+
+export class PolarsTableColumn extends AbstractTableColumn {
+  series: pl.Series;
+
+  constructor(series: pl.Series) {
+    super();
+    this.series = series;
+  }
+
+  override getValueType(): ValueType<PolarsAtomicInternalValueRepresentation> {
+    throw new Error('Method not implemented.');
+  }
+  override getName(): string {
+    return this.series.name;
+  }
+
+  override as_array(): readonly PolarsAtomicInternalValueRepresentation[] {
+    throw new Error('Method not implemented.');
+  }
+
+  override nth(n: number): PolarsAtomicInternalValueRepresentation | undefined {
+    const e = this.series.getIndex(n) as unknown;
+    if (e instanceof DataType) {
+      return e;
+    }
+    return undefined;
+  }
+
+  map(): PolarsTableColumn | undefined {
+    this.series.values();
+  }
+}
+
+export class TsTableColumn<
+  T extends TsInternalValueRepresentation,
+> extends AbstractTableColumn {
+  name: string;
+  values: T[];
+
+  constructor(name: string, values: T[]) {
+    super();
+    this.name = name;
+    this.values = values;
+  }
+
+  override getValueType(): ValueType<T> {
+    throw new Error('Method not implemented.');
+  }
+
+  override getName(): string {
+    return this.name;
+  }
+
+  override as_array(): readonly InternalValueRepresentation[] {
+    return this.values;
+  }
+
+  override nth(n: number): InternalValueRepresentation | undefined {
+    return this.values.at(n);
+  }
+}
 
 /**
  * Invariant: the shape of the table is always a rectangle.
@@ -36,18 +101,14 @@ export type TableRow = Record<string, InternalValueRepresentation>;
  */
 
 export interface Table extends IOTypeImplementation<IOType.TABLE> {
-  withColumn(name: string, column: pl.Series): Table;
-  withRow(row: TableRow): Table;
-  whitoutRow(rowId: number): Table;
-  withoutRows(rowIds: number[]): Table;
+  withColumn(column: TableColumn): Table;
+  filter<F>(cond: F): Table;
   getNumberOfRows(): number;
   getNumberOfColumns(): number;
   hasColumn(name: string): boolean;
-  getColumns(): ReadonlyMap<string, pl.Series>;
-  getRow(rowId: number): Map<string, InternalValueRepresentation>;
-  generateDropTableStatement(tableName: string): string;
-  generateInsertValuesStatement(tableName: string): string;
-  generateCreateTableStatement(tableName: string): string;
+  getColumns(): ReadonlyArray<TableColumn>;
+  getColumn(name: string): TableColumn | undefined;
+  getRow(id: number): InternalValueRepresentation[];
   clone(): Table;
   acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
 }
@@ -55,44 +116,29 @@ export interface Table extends IOTypeImplementation<IOType.TABLE> {
 export abstract class AbstractTable implements Table {
   public readonly ioType = IOType.TABLE;
 
-  abstract withColumn(name: string, column: pl.Series): Table;
-  abstract withRow(row: TableRow): Table;
-  abstract whitoutRow(rowId: number): Table;
-  abstract withoutRows(rowIds: number[]): Table;
+  abstract withColumn(column: AbstractTableColumn): AbstractTable;
+  abstract filter<F>(cond: F): AbstractTable;
   abstract getNumberOfRows(): number;
   abstract getNumberOfColumns(): number;
   abstract hasColumn(name: string): boolean;
-  abstract getColumns(): ReadonlyMap<string, pl.Series>;
-  abstract getRow(rowId: number): Map<string, InternalValueRepresentation>;
-  generateDropTableStatement(tableName: string): string {
-    return `DROP TABLE IF EXISTS "${tableName}";`;
-  }
-  abstract generateInsertValuesStatement(tableName: string): string;
-  abstract generateCreateTableStatement(tableName: string): string;
-  abstract clone(): Table;
+  abstract getColumns(): ReadonlyArray<AbstractTableColumn>;
+  abstract getColumn(name: string): AbstractTableColumn | undefined;
+  abstract getRow(id: number): InternalValueRepresentation[];
+  abstract clone(): AbstractTable;
   abstract acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
 }
 
 export class PolarsTable extends AbstractTable {
-  private df: pl.DataFrame = pl.DataFrame();
+  df: pl.DataFrame = pl.DataFrame();
 
   public constructor(df: pl.DataFrame) {
     super();
     this.df = df;
   }
 
-  override withColumn(name: string, column: pl.Series): PolarsTable {
-    const ndf = this.df.withColumn(column).withColumnRenamed(column.name, name);
+  override withColumn(column: PolarsTableColumn): PolarsTable {
+    const ndf = this.df.withColumn(column.series);
     return new PolarsTable(ndf);
-  }
-  override withRow(row: TableRow): PolarsTable {
-    throw new Error('Method not implemented.');
-  }
-  override whitoutRow(rowId: number): PolarsTable {
-    throw new Error('Method not implemented.');
-  }
-  override withoutRows(rowIds: number[]): PolarsTable {
-    throw new Error('Method not implemented.');
   }
   override getNumberOfRows(): number {
     return this.df.height;
@@ -108,113 +154,92 @@ export class PolarsTable extends AbstractTable {
       return false;
     }
   }
-  override getColumns(): ReadonlyMap<string, pl.Series> {
-    const m = new Map();
-    this.df.getColumns().forEach((s) => {
-      m.set(s.name, s);
+
+  override filter<F>(_cond: F): Table {
+    throw new Error('Method not implemented.');
+  }
+  override getColumns(): readonly PolarsTableColumn[] {
+    const seriess = this.df.getColumns();
+    return seriess.map((s, _i, _ss) => {
+      return new PolarsTableColumn(s);
     });
-    return m;
   }
-  override getRow(rowId: number): Map<string, InternalValueRepresentation> {
-    throw new Error('Method not implemented');
+
+  override getColumn(name: string): PolarsTableColumn | undefined {
+    try {
+      const s = this.df.getColumn(name);
+      return new PolarsTableColumn(s);
+    } catch {
+      return undefined;
+    }
   }
-  override generateInsertValuesStatement(tableName: string): string {
-    throw new Error('Method not implemented.');
+
+  override getRow(id: number): PolarsAtomicInternalValueRepresentation[] {
+    return this.df.row(id).map((cell) => {
+      if (cell instanceof DataType) {
+        return cell;
+      }
+      throw new Error('Expected a pola-rs datatype');
+    });
   }
-  override generateCreateTableStatement(tableName: string): string {
-    throw new Error('Method not implemented.');
-  }
-  override clone(): Table {
-    throw new Error('Method not implemented.');
+
+  override clone(): PolarsTable {
+    return new PolarsTable(this.df.clone());
   }
   override acceptVisitor<R>(visitor: IoTypeVisitor<R>): R {
-    throw new Error('Method not implemented.');
+    return visitor.visitPolarsTable(this);
   }
 }
 
-export class TsTable implements AbstractTable {
+export class TsTable extends AbstractTable {
   private numberOfRows = 0;
 
-  private columns = new Map<string, TableColumn>();
+  private columns = new Map<
+    string,
+    TsTableColumn<TsInternalValueRepresentation>
+  >();
 
   public constructor(numberOfRows = 0) {
+    super();
     this.numberOfRows = numberOfRows;
   }
 
-  addColumn(name: string, column: TableColumn): void {
+  override withColumn<T extends TsInternalValueRepresentation>(
+    column: TsTableColumn<T>,
+  ): TsTable {
     assert(column.values.length === this.numberOfRows);
-    this.columns.set(name, column);
+    const nt = this.clone();
+    nt.columns.set(column.name, column);
+    return nt;
   }
 
-  /**
-   * Tries to add a new row to this table.
-   * NOTE: This method will only add the row if the table has at least one column!
-   * @param row data of this row for each column
-   */
-  addRow(row: TableRow): void {
-    const rowLength = Object.keys(row).length;
-    assert(
-      rowLength === this.columns.size,
-      `Added row has the wrong dimension (expected: ${this.columns.size}, actual: ${rowLength})`,
-    );
-    if (rowLength === 0) {
-      return;
-    }
-    assert(
-      Object.keys(row).every((x) => this.hasColumn(x)),
-      'Added row does not fit the columns in the table',
-    );
-
-    Object.entries(row).forEach(([columnName, value]) => {
-      const column = this.columns.get(columnName);
-      assert(column !== undefined);
-
-      assert(column.valueType.isInternalValueRepresentation(value));
-      column.values.push(value);
-    });
-
-    this.numberOfRows++;
+  override filter<F>(cond: F): TsTable {
+    throw new Error('Metho not implemented.');
   }
 
-  dropRow(rowId: number): void {
-    assert(rowId < this.numberOfRows);
-
-    this.columns.forEach((column) => {
-      column.values.splice(rowId, 1);
-    });
-
-    this.numberOfRows--;
-  }
-
-  dropRows(rowIds: number[]): void {
-    rowIds
-      .sort((a, b) => b - a) // delete descending to avoid messing up row indices
-      .forEach((rowId) => {
-        this.dropRow(rowId);
-      });
-  }
-
-  getNumberOfRows(): number {
+  override getNumberOfRows(): number {
     return this.numberOfRows;
   }
 
-  getNumberOfColumns(): number {
+  override getNumberOfColumns(): number {
     return this.columns.size;
   }
 
-  hasColumn(name: string): boolean {
+  override hasColumn(name: string): boolean {
     return this.columns.has(name);
   }
 
-  getColumns(): ReadonlyMap<string, TableColumn> {
-    return this.columns;
+  override getColumns(): readonly TsTableColumn<TsInternalValueRepresentation>[] {
+    return [...this.columns.values()];
   }
 
-  getColumn(name: string): TableColumn | undefined {
+  override getColumn(
+    name: string,
+  ): TsTableColumn<TsInternalValueRepresentation> | undefined {
     return this.columns.get(name);
   }
 
-  getRow(rowId: number): Map<string, InternalValueRepresentation> {
+  getRow(rowId: number): InternalValueRepresentation[] {
     const numberOfRows = this.getNumberOfRows();
     if (rowId >= numberOfRows) {
       throw new Error(
@@ -222,75 +247,22 @@ export class TsTable implements AbstractTable {
       );
     }
 
-    const row = new Map<string, InternalValueRepresentation>();
-    [...this.columns.entries()].forEach(([columnName, column]) => {
-      const value = column.values[rowId];
-      assert(value !== undefined);
-      row.set(columnName, value);
-    });
-    return row;
-  }
-
-  static generateDropTableStatement(tableName: string): string {
-    return `DROP TABLE IF EXISTS "${tableName}";`;
-  }
-
-  generateInsertValuesStatement(tableName: string): string {
-    const valueRepresentationVisitor = new SQLValueRepresentationVisitor();
-
-    const columnNames = [...this.columns.keys()];
-    const formattedRowValues: string[] = [];
-    for (let rowIndex = 0; rowIndex < this.numberOfRows; ++rowIndex) {
-      const rowValues: string[] = [];
-      for (const columnName of columnNames) {
-        const column = this.columns.get(columnName);
-        const entry = column?.values[rowIndex];
-        assert(entry !== undefined);
-        const formattedValue = column?.valueType.acceptVisitor(
-          valueRepresentationVisitor,
-        )(entry);
-        assert(formattedValue !== undefined);
-        rowValues.push(formattedValue);
+    return [...this.columns.values()].map((col) => {
+      const cell = col.as_array().at(rowId);
+      if (cell === undefined) {
+        throw new Error(`Unexpected undefined for cell in row ${rowId}`);
       }
-      formattedRowValues.push(`(${rowValues.join(',')})`);
-    }
-
-    const formattedColumns = columnNames.map((c) => `"${c}"`).join(',');
-
-    return `INSERT INTO "${tableName}" (${formattedColumns}) VALUES ${formattedRowValues.join(
-      ', ',
-    )}`;
+      return cell;
+    });
   }
 
-  generateCreateTableStatement(tableName: string): string {
-    const columnTypeVisitor = new SQLColumnTypeVisitor();
-
-    const columns = [...this.columns.entries()];
-    const columnStatements = columns.map(([columnName, column]) => {
-      return `"${columnName}" ${column.valueType.acceptVisitor(
-        columnTypeVisitor,
-      )}`;
-    });
-
-    return `CREATE TABLE IF NOT EXISTS "${tableName}" (${columnStatements.join(
-      ',',
-    )});`;
-  }
-
-  clone(): Table {
-    const cloned = new Table();
-    cloned.numberOfRows = this.numberOfRows;
-    [...this.columns.entries()].forEach(([columnName, column]) => {
-      cloned.addColumn(columnName, {
-        values: structuredClone(column.values),
-        valueType: column.valueType,
-      });
-    });
-
+  override clone(): TsTable {
+    const cloned = new TsTable(this.numberOfRows);
+    cloned.columns = structuredClone(this.columns);
     return cloned;
   }
 
-  acceptVisitor<R>(visitor: IoTypeVisitor<R>): R {
-    return visitor.visitTable(this);
+  override acceptVisitor<R>(visitor: IoTypeVisitor<R>): R {
+    return visitor.visitTsTable(this);
   }
 }

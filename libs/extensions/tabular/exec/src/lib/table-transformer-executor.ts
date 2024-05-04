@@ -18,6 +18,53 @@ import {
   IOType,
   type InternalValueRepresentation,
 } from '@jvalue/jayvee-language-server';
+import { pl } from 'nodejs-polars';
+
+export interface GenericTableTransformerExecutor
+  extends AbstractBlockExecutor<IOType.TABLE, IOType.TABLE> {
+  doExecute(
+    inputTable: Table,
+    context: ExecutionContext,
+  ): Promise<R.Result<Table>>;
+}
+
+abstract class AbstractGenericTableTransformerExecutor
+  extends AbstractBlockExecutor<IOType.TABLE, IOType.TABLE>
+  implements GenericTableTransformerExecutor
+{
+  public static readonly type = 'TableTransformer';
+
+  constructor() {
+    super(IOType.TABLE, IOType.TABLE);
+  }
+}
+
+@implementsStatic<BlockExecutorClass>()
+export class PolarsTransformerExecutor extends AbstractGenericTableTransformerExecutor {
+  override async doExecute(
+    inputTable: R.PolarsTable,
+    context: R.ExecutionContext,
+  ): Promise<R.Result<R.IOTypeImplementation<IOType.TABLE> | null>> {
+    const inputColumnNames = context.getPropertyValue(
+      'inputColumns',
+      context.valueTypeProvider.createCollectionValueTypeOf(
+        context.valueTypeProvider.Primitives.Text,
+      ),
+    );
+    const outputColumnName = context.getPropertyValue(
+      'outputColumn',
+      context.valueTypeProvider.Primitives.Text,
+    );
+    const usedTransform = context.getPropertyValue(
+      'use',
+      context.valueTypeProvider.Primitives.Transform,
+    );
+
+    inputTable.df.withColumn(pl.col(inputColumnNames).alias(outputColumnName));
+
+    throw new Error('Method not implemented.');
+  }
+}
 
 @implementsStatic<BlockExecutorClass>()
 export class TableTransformerExecutor extends AbstractBlockExecutor<

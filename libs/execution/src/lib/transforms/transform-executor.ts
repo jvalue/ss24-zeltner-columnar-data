@@ -15,7 +15,12 @@ import {
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
-import { type TableColumn } from '../types/io-types/table';
+import {
+  type PolarsTable,
+  type Table,
+  type TsTable,
+  type TableColumn,
+} from '../types/io-types/table';
 
 export interface PortDetails {
   port: TransformPortDefinition;
@@ -66,8 +71,7 @@ export class TransformExecutor {
   }
 
   executeTransform(
-    columns: Map<string, TableColumn>,
-    numberOfRows: number,
+    table: Table,
     context: ExecutionContext,
   ): {
     resultingColumn: TableColumn;
@@ -75,15 +79,14 @@ export class TransformExecutor {
   } {
     context.enterNode(this.transform);
 
-    const result = this.doExecuteTransform(columns, numberOfRows, context);
+    const result = this.doExecuteTransform(table, context);
     context.exitNode(this.transform);
 
     return result;
   }
 
   private doExecuteTransform(
-    columns: Map<string, TableColumn>,
-    numberOfRows: number,
+    table: Table,
     context: ExecutionContext,
   ): {
     resultingColumn: TableColumn;
@@ -95,8 +98,13 @@ export class TransformExecutor {
     const newColumn: InternalValueRepresentation[] = [];
     const rowsToDelete: number[] = [];
 
-    for (let rowIndex = 0; rowIndex < numberOfRows; ++rowIndex) {
-      this.addVariablesToContext(inputDetailsList, columns, rowIndex, context);
+    for (let rowIndex = 0; rowIndex < table.getNumberOfRows(); ++rowIndex) {
+      this.addVariablesToContext(
+        inputDetailsList,
+        table.getColumns(),
+        rowIndex,
+        context,
+      );
 
       let newValue: InternalValueRepresentation | undefined = undefined;
       try {
@@ -161,17 +169,19 @@ export class TransformExecutor {
 
   private addVariablesToContext(
     inputDetailsList: PortDetails[],
-    columns: Map<string, TableColumn<InternalValueRepresentation>>,
+    columns: readonly TableColumn[],
     rowIndex: number,
     context: ExecutionContext,
   ) {
     for (const inputDetails of inputDetailsList) {
       const variableName = inputDetails.port.name;
 
-      const column = columns.get(variableName);
+      const column = columns.find((col) => {
+        return col.getName() === variableName;
+      });
       assert(column !== undefined);
 
-      const variableValue = column.values[rowIndex];
+      const variableValue = column.nth(rowIndex);
       assert(variableValue !== undefined);
 
       context.evaluationContext.setValueForReference(
