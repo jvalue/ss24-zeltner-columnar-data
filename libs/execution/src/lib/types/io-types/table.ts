@@ -7,19 +7,19 @@ import { strict as assert } from 'assert';
 
 import {
   IOType,
-  InternalValueRepresentation,
-  PolarsAtomicInternalValueRepresentation,
+  type InternalValueRepresentation,
+  type PolarsAtomicInternalValueRepresentation,
   PolarsInternalValueRepresentation,
   type TsInternalValueRepresentation,
   type ValueType,
 } from '@jvalue/jayvee-language-server';
+import { zip, zipWith } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { DataType, pl } from 'nodejs-polars';
 
 import {
   type IOTypeImplementation,
   type IoTypeVisitor,
 } from './io-type-implementation';
-import { zip, zipWith } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 
 export interface TableColumn {
   getValueType(): ValueType;

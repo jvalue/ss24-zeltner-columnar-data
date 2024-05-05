@@ -17,10 +17,10 @@ import {
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
 import {
-  type PolarsTable,
+  TsTable,
   type Table,
-  type TsTable,
   type TableColumn,
+  TsTableColumn,
 } from '../types/io-types/table';
 
 export interface PortDetails {
@@ -28,7 +28,7 @@ export interface PortDetails {
   valueType: ValueType;
 }
 
-export class TransformExecutor {
+export abstract class AbstractTransformExecutor<A, B> {
   constructor(
     private readonly transform: TransformDefinition,
     private readonly context: ExecutionContext,
@@ -71,26 +71,34 @@ export class TransformExecutor {
     return outputAssignments[0]!;
   }
 
-  executeTransform(
-    table: Table,
-    context: ExecutionContext,
-  ): {
-    resultingColumn: TableColumn;
-    rowsToDelete: number[];
-  } {
+  executeTransform(input: A, context: ExecutionContext): B {
     context.enterNode(this.transform);
 
-    const result = this.doExecuteTransform(table, context);
+    const result = this.doExecuteTransform(input, context);
     context.exitNode(this.transform);
 
     return result;
   }
 
-  private doExecuteTransform(
-    table: Table,
+  protected abstract doExecuteTransform(input: A, context: ExecutionContext): B;
+}
+
+export class TsTransformExecutor extends AbstractTransformExecutor<
+  { columns: Map<string, TableColumn>; numberOfRows: number },
+  {
+    resultingColumn: TsTableColumn<InternalValueRepresentation>;
+    rowsToDelete: number[];
+  }
+> {
+  constructor(transform: TransformDefinition, context: ExecutionContext) {
+    super(transform, context);
+  }
+
+  protected override doExecuteTransform(
+    input: { columns: Map<string, TableColumn>; numberOfRows: number },
     context: ExecutionContext,
   ): {
-    resultingColumn: TableColumn;
+    resultingColumn: TsTableColumn<InternalValueRepresentation>;
     rowsToDelete: number[];
   } {
     const inputDetailsList = this.getInputDetails();
@@ -99,10 +107,10 @@ export class TransformExecutor {
     const newColumn: InternalValueRepresentation[] = [];
     const rowsToDelete: number[] = [];
 
-    for (let rowIndex = 0; rowIndex < table.getNumberOfRows(); ++rowIndex) {
+    for (let rowIndex = 0; rowIndex < input.numberOfRows; ++rowIndex) {
       this.addVariablesToContext(
         inputDetailsList,
-        table.getColumns(),
+        input.columns,
         rowIndex,
         context,
       );
@@ -152,10 +160,7 @@ export class TransformExecutor {
 
     return {
       rowsToDelete: rowsToDelete,
-      resultingColumn: {
-        values: newColumn,
-        valueType: outputDetails.valueType,
-      },
+      resultingColumn: new TsTableColumn('LEAK', newColumn),
     };
   }
 
@@ -170,16 +175,14 @@ export class TransformExecutor {
 
   private addVariablesToContext(
     inputDetailsList: PortDetails[],
-    columns: readonly TableColumn[],
+    columns: ReadonlyMap<string, TsTableColumn<InternalValueRepresentation>>,
     rowIndex: number,
     context: ExecutionContext,
   ) {
     for (const inputDetails of inputDetailsList) {
       const variableName = inputDetails.port.name;
 
-      const column = columns.find((col) => {
-        return col.getName() === variableName;
-      });
+      const column = columns.get(variableName);
       assert(column !== undefined);
 
       const variableValue = column.nth(rowIndex);
