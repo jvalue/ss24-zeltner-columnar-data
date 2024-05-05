@@ -54,9 +54,9 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       context.valueTypeProvider.Primitives.Transform,
     );
 
-    inputTable.df.withColumn(pl.col(inputColumnNames).alias(outputColumnName));
+    // inputTable.df.withColumn(pl.col(inputColumnNames).alias(outputColumnName));
 
-    throw new Error('Method not implemented.');
+    throw new Error('Cannot transform PolarsTables yet :(');
   }
 }
 
