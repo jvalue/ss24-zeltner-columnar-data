@@ -40,7 +40,7 @@ abstract class AbstractGenericTableTransformerExecutor
 }
 
 @implementsStatic<BlockExecutorClass>()
-export class PolarsTransformerExecutor extends AbstractGenericTableTransformerExecutor {
+export class PolarsTableTransformerExecutor extends AbstractGenericTableTransformerExecutor {
   override async doExecute(
     inputTable: R.PolarsTable,
     context: R.ExecutionContext,
