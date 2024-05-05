@@ -14,7 +14,7 @@ import { type BinaryFile } from '../types/io-types/filesystem-node-file-binary';
 import { type TextFile } from '../types/io-types/filesystem-node-file-text';
 import { type IoTypeVisitor } from '../types/io-types/io-type-implementation';
 import { type Sheet } from '../types/io-types/sheet';
-import { PolarsTable, type TsTable } from '../types/io-types/table';
+import { type PolarsTable, type TsTable } from '../types/io-types/table';
 
 import { type DebugGranularity } from './debug-configuration';
 
@@ -51,7 +51,7 @@ export class DebugLogVisitor implements IoTypeVisitor<void> {
     const headers = table
       .getColumns()
       .map((column) => {
-        return `${column.name} (\${column.dtype.toString()})`;
+        return `${column.name} (${column.getValueType().getName()})`;
       })
       .join(' | ');
     this.log(`[Header] ${headers}`);

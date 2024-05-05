@@ -12,14 +12,15 @@ import {
   type TransformPortDefinition,
   type ValueType,
   evaluateExpression,
+  TsInternalValueRepresentation,
 } from '@jvalue/jayvee-language-server';
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
 import {
-  TsTable,
   type Table,
   type TableColumn,
+  type TsTable,
   TsTableColumn,
 } from '../types/io-types/table';
 
@@ -28,7 +29,7 @@ export interface PortDetails {
   valueType: ValueType;
 }
 
-export abstract class AbstractTransformExecutor<A, B> {
+export abstract class TransformExecutor<I, O> {
   constructor(
     private readonly transform: TransformDefinition,
     private readonly context: ExecutionContext,
@@ -71,7 +72,7 @@ export abstract class AbstractTransformExecutor<A, B> {
     return outputAssignments[0]!;
   }
 
-  executeTransform(input: A, context: ExecutionContext): B {
+  executeTransform(input: I, context: ExecutionContext): O {
     context.enterNode(this.transform);
 
     const result = this.doExecuteTransform(input, context);
@@ -80,25 +81,27 @@ export abstract class AbstractTransformExecutor<A, B> {
     return result;
   }
 
-  protected abstract doExecuteTransform(input: A, context: ExecutionContext): B;
+  protected abstract doExecuteTransform(input: I, context: ExecutionContext): O;
 }
 
-export class TsTransformExecutor extends AbstractTransformExecutor<
-  { columns: Map<string, TableColumn>; numberOfRows: number },
+export class TsTransformExecutor extends TransformExecutor<
   {
-    resultingColumn: TsTableColumn<InternalValueRepresentation>;
+    columns: Map<string, TsTableColumn>;
+    numberOfRows: number;
+  },
+  {
+    resultingColumn: TsTableColumn;
     rowsToDelete: number[];
   }
 > {
-  constructor(transform: TransformDefinition, context: ExecutionContext) {
-    super(transform, context);
-  }
-
   protected override doExecuteTransform(
-    input: { columns: Map<string, TableColumn>; numberOfRows: number },
+    input: {
+      columns: Map<string, TsTableColumn>;
+      numberOfRows: number;
+    },
     context: ExecutionContext,
   ): {
-    resultingColumn: TsTableColumn<InternalValueRepresentation>;
+    resultingColumn: TsTableColumn;
     rowsToDelete: number[];
   } {
     const inputDetailsList = this.getInputDetails();
@@ -160,7 +163,11 @@ export class TsTransformExecutor extends AbstractTransformExecutor<
 
     return {
       rowsToDelete: rowsToDelete,
-      resultingColumn: new TsTableColumn('LEAK', newColumn),
+      resultingColumn: new TsTableColumn(
+        'LEAK',
+        newColumn,
+        outputDetails.valueType,
+      ),
     };
   }
 
@@ -175,7 +182,8 @@ export class TsTransformExecutor extends AbstractTransformExecutor<
 
   private addVariablesToContext(
     inputDetailsList: PortDetails[],
-    columns: ReadonlyMap<string, TsTableColumn<InternalValueRepresentation>>,
+
+    columns: ReadonlyMap<string, TableColumn>,
     rowIndex: number,
     context: ExecutionContext,
   ) {

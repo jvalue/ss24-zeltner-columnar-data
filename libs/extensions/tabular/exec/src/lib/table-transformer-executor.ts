@@ -12,27 +12,20 @@ import {
   type ExecutionContext,
   type PortDetails,
   type Table,
-  TransformExecutor,
+  TsTransformExecutor,
   implementsStatic,
 } from '@jvalue/jayvee-execution';
 import {
   IOType,
+  TsInternalValueRepresentation,
   type InternalValueRepresentation,
 } from '@jvalue/jayvee-language-server';
 import { pl } from 'nodejs-polars';
 
-export interface GenericTableTransformerExecutor
-  extends AbstractBlockExecutor<IOType.TABLE, IOType.TABLE> {
-  doExecute(
-    inputTable: Table,
-    context: ExecutionContext,
-  ): Promise<R.Result<Table>>;
-}
-
-abstract class AbstractGenericTableTransformerExecutor
-  extends AbstractBlockExecutor<IOType.TABLE, IOType.TABLE>
-  implements GenericTableTransformerExecutor
-{
+export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
+  IOType.TABLE,
+  IOType.TABLE
+> {
   public static readonly type = 'TableTransformer';
 
   constructor() {
@@ -41,7 +34,8 @@ abstract class AbstractGenericTableTransformerExecutor
 }
 
 @implementsStatic<BlockExecutorClass>()
-export class PolarsTableTransformerExecutor extends AbstractGenericTableTransformerExecutor {
+export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
+  // eslint-disable-next-line @typescript-eslint/require-await
   override async doExecute(
     inputTable: R.PolarsTable,
     context: R.ExecutionContext,
@@ -68,7 +62,7 @@ export class PolarsTableTransformerExecutor extends AbstractGenericTableTransfor
 }
 
 @implementsStatic<BlockExecutorClass>()
-export class TableTransformerExecutor extends AbstractBlockExecutor<
+export class TsTableTransformerExecutor extends AbstractBlockExecutor<
   IOType.TABLE,
   IOType.TABLE
 > {
@@ -79,10 +73,10 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async doExecute(
-    inputTable: Table,
+  override async doExecute(
+    inputTable: R.TsTable,
     context: ExecutionContext,
-  ): Promise<R.Result<Table>> {
+  ): Promise<R.Result<R.TsTable>> {
     const inputColumnNames = context.getPropertyValue(
       'inputColumns',
       context.valueTypeProvider.createCollectionValueTypeOf(
@@ -107,7 +101,7 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
       return checkInputColumnsExistResult;
     }
 
-    const executor = new TransformExecutor(usedTransform, context);
+    const executor = new TsTransformExecutor(usedTransform, context);
     const transformInputDetailsList = executor.getInputDetails();
     const transformOutputDetails = executor.getOutputDetails();
 
@@ -133,8 +127,10 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
     );
 
     const transformResult = executor.executeTransform(
-      variableToColumnMap,
-      inputTable.getNumberOfRows(),
+      {
+        columns: variableToColumnMap,
+        numberOfRows: inputTable.getNumberOfRows(),
+      },
       context,
     );
 
@@ -149,11 +145,11 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
 
   checkInputColumnsMatchTransformInputTypes(
     inputColumnNames: string[],
-    inputTable: R.Table,
+    inputTable: R.TsTable,
     transformInputDetailsList: PortDetails[],
     context: R.ExecutionContext,
-  ): R.Result<Map<string, R.TableColumn>> {
-    const variableToColumnMap = new Map<string, R.TableColumn>();
+  ): R.Result<Map<string, R.TsTableColumn>> {
+    const variableToColumnMap = new Map<string, R.TsTableColumn>();
     for (let i = 0; i < inputColumnNames.length; ++i) {
       const inputColumnName = inputColumnNames[i];
       assert(inputColumnName !== undefined);
@@ -164,10 +160,14 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
       assert(matchingInputDetails !== undefined);
 
       if (
-        !inputColumn.valueType.isConvertibleTo(matchingInputDetails.valueType)
+        !inputColumn
+          .getValueType()
+          .isConvertibleTo(matchingInputDetails.valueType)
       ) {
         return R.err({
-          message: `Type ${inputColumn.valueType.getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
+          message: `Type ${inputColumn
+            .getValueType()
+            .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
           diagnostic: {
             node: context.getOrFailProperty('use'),
           },
@@ -181,7 +181,7 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
 
   checkInputColumnsExist(
     inputColumnNames: string[],
-    inputTable: R.Table,
+    inputTable: R.TsTable,
     context: R.ExecutionContext,
   ): R.Result<undefined> {
     // check input columns exist
@@ -204,9 +204,9 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
   }
 
   private createOutputTable(
-    inputTable: R.Table,
+    inputTable: R.TsTable,
     transformResult: {
-      resultingColumn: R.TableColumn<InternalValueRepresentation>;
+      resultingColumn: R.TsTableColumn;
       rowsToDelete: number[];
     },
     outputColumnName: string,
@@ -230,9 +230,13 @@ export class TableTransformerExecutor extends AbstractBlockExecutor<
       );
 
       // log if output column type changes
-      if (!outputColumn.valueType.equals(transformOutputDetails.valueType)) {
+      if (
+        !outputColumn.getValueType().equals(transformOutputDetails.valueType)
+      ) {
         context.logger.logInfo(
-          `Column "${outputColumnName}" will change its type from ${outputColumn.valueType.getName()} to ${transformOutputDetails.valueType.getName()}`,
+          `Column "${outputColumnName}" will change its type from ${outputColumn
+            .getValueType()
+            .getName()} to ${transformOutputDetails.valueType.getName()}`,
         );
       }
     }
