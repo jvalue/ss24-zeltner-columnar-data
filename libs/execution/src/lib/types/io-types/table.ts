@@ -35,11 +35,8 @@ export abstract class AbstractTableColumn implements TableColumn {
 }
 
 export class PolarsTableColumn extends AbstractTableColumn {
-  series: pl.Series;
-
-  constructor(series: pl.Series) {
+  constructor(public series: pl.Series) {
     super();
-    this.series = series;
   }
 
   override getValueType(): ValueType<PolarsAtomicInternalValueRepresentation> {
@@ -60,37 +57,32 @@ export class PolarsTableColumn extends AbstractTableColumn {
     }
     return undefined;
   }
-
-  map(): PolarsTableColumn | undefined {
-    this.series.values();
-  }
 }
 
 export class TsTableColumn<
-  T extends TsInternalValueRepresentation,
+  T extends TsInternalValueRepresentation = TsInternalValueRepresentation,
 > extends AbstractTableColumn {
-  name: string;
-  values: T[];
-
-  constructor(name: string, values: T[]) {
+  constructor(
+    public name: string,
+    public values: T[],
+    public valueType: ValueType<T>,
+  ) {
     super();
-    this.name = name;
-    this.values = values;
   }
 
   override getValueType(): ValueType<T> {
-    throw new Error('Method not implemented.');
+    return this.valueType;
   }
 
   override getName(): string {
     return this.name;
   }
 
-  override as_array(): readonly InternalValueRepresentation[] {
+  override as_array(): readonly T[] {
     return this.values;
   }
 
-  override nth(n: number): InternalValueRepresentation | undefined {
+  override nth(n: number): T | undefined {
     return this.values.at(n);
   }
 }
@@ -158,6 +150,7 @@ export class PolarsTable extends AbstractTable {
   override filter<F>(_cond: F): Table {
     throw new Error('Method not implemented.');
   }
+
   override getColumns(): readonly PolarsTableColumn[] {
     const seriess = this.df.getColumns();
     return seriess.map((s, _i, _ss) => {
@@ -194,10 +187,7 @@ export class PolarsTable extends AbstractTable {
 export class TsTable extends AbstractTable {
   private numberOfRows = 0;
 
-  private columns = new Map<
-    string,
-    TsTableColumn<TsInternalValueRepresentation>
-  >();
+  private columns = new Map<string, TsTableColumn>();
 
   public constructor(numberOfRows = 0) {
     super();
@@ -217,6 +207,29 @@ export class TsTable extends AbstractTable {
     throw new Error('Metho not implemented.');
   }
 
+  addColumn(name: string, column: TsTableColumn): void {
+    assert(column.values.length === this.numberOfRows);
+    this.columns.set(name, column);
+  }
+
+  dropRow(rowId: number): void {
+    assert(rowId < this.numberOfRows);
+
+    this.columns.forEach((column) => {
+      column.values.splice(rowId, 1);
+    });
+
+    this.numberOfRows--;
+  }
+
+  dropRows(rowIds: number[]): void {
+    rowIds
+      .sort((a, b) => b - a) // delete descending to avoid messing up row indices
+      .forEach((rowId) => {
+        this.dropRow(rowId);
+      });
+  }
+
   override getNumberOfRows(): number {
     return this.numberOfRows;
   }
@@ -229,13 +242,11 @@ export class TsTable extends AbstractTable {
     return this.columns.has(name);
   }
 
-  override getColumns(): readonly TsTableColumn<TsInternalValueRepresentation>[] {
+  override getColumns(): readonly TsTableColumn[] {
     return [...this.columns.values()];
   }
 
-  override getColumn(
-    name: string,
-  ): TsTableColumn<TsInternalValueRepresentation> | undefined {
+  override getColumn(name: string): TsTableColumn | undefined {
     return this.columns.get(name);
   }
 
