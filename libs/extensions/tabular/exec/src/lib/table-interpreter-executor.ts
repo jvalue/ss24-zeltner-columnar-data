@@ -9,8 +9,10 @@ import {
   AbstractBlockExecutor,
   type BlockExecutorClass,
   type ExecutionContext,
+  PolarsTable,
   type Sheet,
-  Table,
+  type Table,
+  TsTable,
   implementsStatic,
   isValidValueRepresentation,
   parseValueToInternalRepresentation,
@@ -23,6 +25,7 @@ import {
   type ValuetypeAssignment,
   rowIndexToString,
 } from '@jvalue/jayvee-language-server';
+import pl from 'nodejs-polars';
 
 export interface ColumnDefinitionEntry {
   sheetColumnIndex: number;
@@ -31,8 +34,7 @@ export interface ColumnDefinitionEntry {
   astNode: ValuetypeAssignment;
 }
 
-@implementsStatic<BlockExecutorClass>()
-export class TableInterpreterExecutor extends AbstractBlockExecutor<
+export abstract class TableInterpeter extends AbstractBlockExecutor<
   IOType.SHEET,
   IOType.TABLE
 > {
@@ -42,11 +44,65 @@ export class TableInterpreterExecutor extends AbstractBlockExecutor<
     super(IOType.SHEET, IOType.TABLE);
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async doExecute(
-    inputSheet: Sheet,
+  protected deriveColumnDefinitionEntriesWithoutHeader(
+    columnDefinitions: ValuetypeAssignment[],
     context: ExecutionContext,
-  ): Promise<R.Result<Table>> {
+  ): ColumnDefinitionEntry[] {
+    return columnDefinitions.map<ColumnDefinitionEntry>(
+      (columnDefinition, columnDefinitionIndex) => {
+        const columnValuetype = context.wrapperFactories.ValueType.wrap(
+          columnDefinition.type,
+        );
+        assert(columnValuetype !== undefined);
+        return {
+          sheetColumnIndex: columnDefinitionIndex,
+          columnName: columnDefinition.name,
+          valueType: columnValuetype,
+          astNode: columnDefinition,
+        };
+      },
+    );
+  }
+
+  protected deriveColumnDefinitionEntriesFromHeader(
+    columnDefinitions: ValuetypeAssignment[],
+    headerRow: string[],
+    context: ExecutionContext,
+  ): ColumnDefinitionEntry[] {
+    context.logger.logDebug(`Matching header with provided column names`);
+
+    const columnEntries: ColumnDefinitionEntry[] = [];
+    for (const columnDefinition of columnDefinitions) {
+      const indexOfMatchingHeader = headerRow.findIndex(
+        (headerColumnName) => headerColumnName === columnDefinition.name,
+      );
+      if (indexOfMatchingHeader === -1) {
+        context.logger.logDebug(
+          `Omitting column "${columnDefinition.name}" as the name was not found in the header`,
+        );
+        continue;
+      }
+      const columnValuetype = context.wrapperFactories.ValueType.wrap(
+        columnDefinition.type,
+      );
+      assert(columnValuetype !== undefined);
+
+      columnEntries.push({
+        sheetColumnIndex: indexOfMatchingHeader,
+        columnName: columnDefinition.name,
+        valueType: columnValuetype,
+        astNode: columnDefinition,
+      });
+    }
+
+    return columnEntries;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  override async doExecute(
+    inputSheet: Sheet,
+    context: R.ExecutionContext,
+  ): Promise<R.Result<R.Table>> {
     const header = context.getPropertyValue(
       'header',
       context.valueTypeProvider.Primitives.Boolean,
@@ -114,20 +170,47 @@ export class TableInterpreterExecutor extends AbstractBlockExecutor<
     return R.ok(resultingTable);
   }
 
-  private constructAndValidateTable(
+  protected abstract constructAndValidateTable(
+    sheet: Sheet,
+    header: boolean,
+    columnEntries: ColumnDefinitionEntry[],
+    context: ExecutionContext,
+  ): Table;
+}
+
+@implementsStatic<BlockExecutorClass>()
+export class PolarsTableInterpreterExecutor extends TableInterpeter {
+  protected override constructAndValidateTable(
+    sheet: Sheet,
+    _header: boolean,
+    columnEntries: ColumnDefinitionEntry[],
+    _context: ExecutionContext,
+  ): PolarsTable {
+    const schema: { [key: string]: string } = {};
+    columnEntries.forEach((e) => {
+      schema[e.columnName] = e.valueType.getName();
+    });
+    const df = pl.DataFrame(sheet.getData(), { orient: 'row', schema: schema });
+    return new PolarsTable(df);
+  }
+}
+
+@implementsStatic<BlockExecutorClass>()
+export class TsTableInterpreterExecutor extends TableInterpeter {
+  protected override constructAndValidateTable(
     sheet: Sheet,
     header: boolean,
     columnEntries: ColumnDefinitionEntry[],
     context: ExecutionContext,
   ): Table {
-    const table = new Table();
+    const table = new TsTable();
 
     // add columns
     columnEntries.forEach((columnEntry) => {
-      table.addColumn(columnEntry.columnName, {
-        values: [],
-        valueType: columnEntry.valueType,
-      });
+      table.addColumn(
+        columnEntry.columnName,
+        new R.TsTableColumn(columnEntry.columnName, [], columnEntry.valueType),
+      );
     });
 
     // add rows
@@ -158,9 +241,9 @@ export class TableInterpreterExecutor extends AbstractBlockExecutor<
     sheetRowIndex: number,
     columnEntries: ColumnDefinitionEntry[],
     context: ExecutionContext,
-  ): R.TableRow | undefined {
+  ): R.TsTableRow | undefined {
     let invalidRow = false;
-    const tableRow: R.TableRow = {};
+    const tableRow: R.TsTableRow = {};
     columnEntries.forEach((columnEntry) => {
       const sheetColumnIndex = columnEntry.sheetColumnIndex;
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -202,59 +285,5 @@ export class TableInterpreterExecutor extends AbstractBlockExecutor<
       return undefined;
     }
     return parsedValue;
-  }
-
-  private deriveColumnDefinitionEntriesWithoutHeader(
-    columnDefinitions: ValuetypeAssignment[],
-    context: ExecutionContext,
-  ): ColumnDefinitionEntry[] {
-    return columnDefinitions.map<ColumnDefinitionEntry>(
-      (columnDefinition, columnDefinitionIndex) => {
-        const columnValuetype = context.wrapperFactories.ValueType.wrap(
-          columnDefinition.type,
-        );
-        assert(columnValuetype !== undefined);
-        return {
-          sheetColumnIndex: columnDefinitionIndex,
-          columnName: columnDefinition.name,
-          valueType: columnValuetype,
-          astNode: columnDefinition,
-        };
-      },
-    );
-  }
-
-  private deriveColumnDefinitionEntriesFromHeader(
-    columnDefinitions: ValuetypeAssignment[],
-    headerRow: string[],
-    context: ExecutionContext,
-  ): ColumnDefinitionEntry[] {
-    context.logger.logDebug(`Matching header with provided column names`);
-
-    const columnEntries: ColumnDefinitionEntry[] = [];
-    for (const columnDefinition of columnDefinitions) {
-      const indexOfMatchingHeader = headerRow.findIndex(
-        (headerColumnName) => headerColumnName === columnDefinition.name,
-      );
-      if (indexOfMatchingHeader === -1) {
-        context.logger.logDebug(
-          `Omitting column "${columnDefinition.name}" as the name was not found in the header`,
-        );
-        continue;
-      }
-      const columnValuetype = context.wrapperFactories.ValueType.wrap(
-        columnDefinition.type,
-      );
-      assert(columnValuetype !== undefined);
-
-      columnEntries.push({
-        sheetColumnIndex: indexOfMatchingHeader,
-        columnName: columnDefinition.name,
-        valueType: columnValuetype,
-        astNode: columnDefinition,
-      });
-    }
-
-    return columnEntries;
   }
 }

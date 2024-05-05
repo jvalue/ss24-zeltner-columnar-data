@@ -13,8 +13,14 @@ import { ColumnDeleterExecutor } from './lib/column-deleter-executor';
 import { CSVInterpreterExecutor } from './lib/csv-interpreter-executor';
 import { RowDeleterExecutor } from './lib/row-deleter-executor';
 import { SheetPickerExecutor } from './lib/sheet-picker-executor';
-import { TableInterpreterExecutor } from './lib/table-interpreter-executor';
-import { TableTransformerExecutor } from './lib/table-transformer-executor';
+import {
+  PolarsTableInterpreterExecutor,
+  TsTableInterpreterExecutor,
+} from './lib/table-interpreter-executor';
+import {
+  PolarsTableTransformerExecutor,
+  TsTableTransformerExecutor,
+} from './lib/table-transformer-executor';
 import { XLSXInterpreterExecutor } from './lib/xlsx-interpreter-executor';
 
 export class TabularExecExtension extends JayveeExecExtension {
@@ -24,9 +30,11 @@ export class TabularExecExtension extends JayveeExecExtension {
       ColumnDeleterExecutor,
       RowDeleterExecutor,
       CellRangeSelectorExecutor,
-      TableInterpreterExecutor,
+      PolarsTableInterpreterExecutor,
+      TsTableInterpreterExecutor,
       CSVInterpreterExecutor,
-      TableTransformerExecutor,
+      PolarsTableTransformerExecutor,
+      TsTableTransformerExecutor,
       XLSXInterpreterExecutor,
       SheetPickerExecutor,
     ];
