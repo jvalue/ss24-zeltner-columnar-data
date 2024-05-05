@@ -52,14 +52,14 @@ export class PolarsTableColumn extends AbstractTableColumn {
   }
 
   override getValueType(): ValueType<PolarsAtomicInternalValueRepresentation> {
-    throw new Error('Method not implemented.');
+    throw new Error('getValueType() not implemented.');
   }
   override getName(): string {
     return this.series.name;
   }
 
   override as_array(): readonly PolarsAtomicInternalValueRepresentation[] {
-    throw new Error('Method not implemented.');
+    throw new Error('as_arry() not implemented.');
   }
 
   override nth(n: number): PolarsAtomicInternalValueRepresentation | undefined {
@@ -231,7 +231,7 @@ export class PolarsTable extends Table {
   }
 
   override filter<F>(cond: F): PolarsTable {
-    throw new Error('Method not implemented.');
+    throw new Error('filter() not implemented.');
   }
 
   override getColumns(): readonly PolarsTableColumn[] {
@@ -290,7 +290,7 @@ export class TsTable extends Table {
   }
 
   override filter<F>(cond: F): TsTable {
-    throw new Error('Metho not implemented.');
+    throw new Error('filter() not implemented.');
   }
 
   /**
