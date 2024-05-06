@@ -23,17 +23,26 @@ export abstract class JayveeExecExtension {
 
   getExecutorForBlockType(
     blockTypeName: string,
+    usePolars: boolean,
   ): BlockExecutorClass | undefined {
+    if (blockTypeName === 'TableInterpreter') {
+      blockTypeName = usePolars
+        ? 'PolarsTableInterpreter'
+        : 'TsTableInterpreter';
+    }
     return this.getBlockExecutors().find(
       (x: BlockExecutorClass) => x.type === blockTypeName,
     );
   }
 
-  createBlockExecutor(block: BlockDefinition): BlockExecutor {
+  createBlockExecutor(
+    block: BlockDefinition,
+    usePolars: boolean,
+  ): BlockExecutor {
     const blockType = block.type.ref;
     assert(blockType !== undefined);
 
-    let blockExecutor = this.getExecutorForBlockType(blockType.name);
+    let blockExecutor = this.getExecutorForBlockType(blockType.name, usePolars);
 
     if (
       blockExecutor === undefined &&

@@ -92,8 +92,10 @@ export async function executeBlock(
     return R.ok(null);
   }
 
-  const blockExecutor =
-    executionContext.executionExtension.createBlockExecutor(block);
+  const blockExecutor = executionContext.executionExtension.createBlockExecutor(
+    block,
+    executionContext.runOptions.usePolars,
+  );
 
   const startTime = new Date();
 

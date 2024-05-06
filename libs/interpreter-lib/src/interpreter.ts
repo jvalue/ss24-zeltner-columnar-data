@@ -42,6 +42,7 @@ interface InterpreterOptions {
   debugGranularity: R.DebugGranularity;
   debugTargets: R.DebugTargets;
   debug: boolean;
+  usePolars: boolean;
 }
 
 export interface RunOptions {
@@ -49,6 +50,7 @@ export interface RunOptions {
   debug: boolean;
   debugGranularity: string;
   debugTarget: string | undefined;
+  usePolars: boolean;
   parseOnly?: boolean;
 }
 
@@ -144,6 +146,7 @@ export async function interpretModel(
       // type of options.debugGranularity is asserted in parseModel
       debugGranularity: options.debugGranularity as DebugGranularity,
       debugTargets: debugTargets,
+      usePolars: options.usePolars,
     },
   );
   return interpretationExitCode;
@@ -219,6 +222,7 @@ async function runPipeline(
       isDebugMode: runOptions.debug,
       debugGranularity: runOptions.debugGranularity,
       debugTargets: runOptions.debugTargets,
+      usePolars: runOptions.usePolars,
     },
     new EvaluationContext(
       jayveeServices.RuntimeParameterProvider,

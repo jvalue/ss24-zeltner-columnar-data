@@ -53,6 +53,7 @@ export class ExecutionContext {
       isDebugMode: boolean;
       debugGranularity: DebugGranularity;
       debugTargets: DebugTargets;
+      usePolars: boolean;
     },
     public readonly evaluationContext: EvaluationContext,
   ) {

@@ -62,6 +62,11 @@ program
     'Only parses the model without running it. Exits with 0 if the model is valid, with 1 otherwise.',
     false,
   )
+  .option(
+    '--use-polars',
+    'WARNING: THIS IS EXPERIMENTAL AND PROBABLY BROKEN: Use the experimental polars backend instead of the typescript native implementation.',
+    false,
+  )
   .description('Run a Jayvee file')
   .action(runAction);
 
