@@ -38,8 +38,6 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
   IOType.SHEET,
   IOType.TABLE
 > {
-  public static readonly type = 'TableInterpreter';
-
   constructor() {
     super(IOType.SHEET, IOType.TABLE);
   }
@@ -180,6 +178,8 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
 
 @implementsStatic<BlockExecutorClass>()
 export class PolarsTableInterpreterExecutor extends TableInterpeter {
+  public static readonly type = 'PolarsTableInterpreter';
+
   protected override constructAndValidateTable(
     sheet: Sheet,
     _header: boolean,
@@ -197,6 +197,8 @@ export class PolarsTableInterpreterExecutor extends TableInterpeter {
 
 @implementsStatic<BlockExecutorClass>()
 export class TsTableInterpreterExecutor extends TableInterpeter {
+  public static readonly type = 'TsTableInterpreter';
+
   protected override constructAndValidateTable(
     sheet: Sheet,
     header: boolean,
