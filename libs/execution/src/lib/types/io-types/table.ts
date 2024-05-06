@@ -23,43 +23,27 @@ import {
   type IOTypeImplementation,
   type IoTypeVisitor,
 } from './io-type-implementation';
-import { type } from 'os';
 
-export enum TableImpl {
-  Polars,
-  Typescript,
-}
-
-export interface TableColumn {
-  getValueType(): ValueType;
-  getName(): string;
-  as_array(): readonly InternalValueRepresentation[];
-  nth(n: number): InternalValueRepresentation | undefined;
-  getImpl(): TableImpl;
-}
-
-export abstract class AbstractTableColumn implements TableColumn {
-  abstract getImpl(): TableImpl;
+export abstract class TableColumn {
   abstract getValueType(): ValueType<InternalValueRepresentation>;
   abstract getName(): string;
-  abstract as_array(): readonly InternalValueRepresentation[];
   abstract nth(n: number): InternalValueRepresentation | undefined;
+
+  abstract isPolars(): this is PolarsTableColumn;
+  abstract isTypescript(): this is TsTableColumn;
 }
 
-export class PolarsTableColumn extends AbstractTableColumn {
-  constructor(public series: pl.Series) {
+export class PolarsTableColumn extends TableColumn {
+  constructor(private series: pl.Series) {
     super();
   }
 
   override getValueType(): ValueType<PolarsAtomicInternalValueRepresentation> {
-    throw new Error('getValueType() not implemented.');
-  }
-  override getName(): string {
-    return this.series.name;
+    throw new Error('getValueType() not implemented');
   }
 
-  override as_array(): readonly PolarsAtomicInternalValueRepresentation[] {
-    throw new Error('as_arry() not implemented.');
+  override getName(): string {
+    return this.series.name;
   }
 
   override nth(n: number): PolarsAtomicInternalValueRepresentation | undefined {
@@ -70,14 +54,22 @@ export class PolarsTableColumn extends AbstractTableColumn {
     return undefined;
   }
 
-  override getImpl(): TableImpl {
-    return TableImpl.Polars;
+  override isPolars(): this is PolarsTableColumn {
+    return true;
+  }
+
+  override isTypescript(): this is TsTableColumn {
+    return false;
+  }
+
+  getSeries(): Readonly<pl.Series> {
+    return this.series;
   }
 }
 
 export class TsTableColumn<
   T extends TsInternalValueRepresentation = TsInternalValueRepresentation,
-> extends AbstractTableColumn {
+> extends TableColumn {
   constructor(
     public name: string,
     public values: T[],
@@ -94,16 +86,16 @@ export class TsTableColumn<
     return this.name;
   }
 
-  override as_array(): readonly T[] {
-    return this.values;
-  }
-
   override nth(n: number): T | undefined {
     return this.values.at(n);
   }
 
-  override getImpl(): TableImpl {
-    return TableImpl.Typescript;
+  override isPolars(): this is PolarsTableColumn {
+    return false;
+  }
+
+  override isTypescript(): this is TsTableColumn<T> {
+    return true;
   }
 }
 
@@ -113,44 +105,22 @@ export type TsTableRow = Record<string, TsInternalValueRepresentation>;
  * Invariant: the shape of the table is always a rectangle.
  * This means all columns must have the same size.
  */
-
-// export interface Table extends IOTypeImplementation<IOType.TABLE> {
-//   withColumn(column: TableColumn): Table;
-//   filter<F>(cond: F): Table;
-//   getNumberOfRows(): number;
-//   getNumberOfColumns(): number;
-//   hasColumn(name: string): boolean;
-//   getColumns(): ReadonlyArray<TableColumn>;
-//   getColumn(name: string): TableColumn | undefined;
-//   getRow(id: number): InternalValueRepresentation[];
-//   clone(): Table;
-//   acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
-//   getImpl(): TableImpl;
-// }
-
 export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
   public readonly ioType = IOType.TABLE;
 
-  abstract withColumn(column: AbstractTableColumn): Table;
+  abstract withColumn(column: TableColumn): Table;
   abstract filter<F>(cond: F): Table;
   abstract getNumberOfRows(): number;
   abstract getNumberOfColumns(): number;
   abstract hasColumn(name: string): boolean;
-  abstract getColumns(): ReadonlyArray<AbstractTableColumn>;
-  abstract getColumn(name: string): AbstractTableColumn | undefined;
+  abstract getColumns(): ReadonlyArray<TableColumn>;
+  abstract getColumn(name: string): TableColumn | undefined;
   abstract getRow(id: number): InternalValueRepresentation[];
   abstract clone(): Table;
   abstract acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
-  abstract getImpl(): TableImpl;
 
-  static newEmpty(impl: TableImpl): Table {
-    switch (impl) {
-      case TableImpl.Polars:
-        return new PolarsTable(pl.DataFrame({}));
-      case TableImpl.Typescript:
-        return new TsTable(0);
-    }
-  }
+  abstract isPolars(): this is PolarsTable;
+  abstract isTypescript(): this is TsTable;
 
   static generateDropTableStatement(tableName: string): string {
     return `DROP TABLE IF EXISTS "${tableName}";`;
@@ -212,7 +182,7 @@ export class PolarsTable extends Table {
   }
 
   override withColumn(column: PolarsTableColumn): PolarsTable {
-    const ndf = this.df.withColumn(column.series);
+    const ndf = this.df.withColumn(column.getSeries());
     return new PolarsTable(ndf);
   }
   override getNumberOfRows(): number {
@@ -267,8 +237,12 @@ export class PolarsTable extends Table {
     return visitor.visitPolarsTable(this);
   }
 
-  override getImpl(): TableImpl {
-    return TableImpl.Polars;
+  override isPolars(): this is PolarsTable {
+    return true;
+  }
+
+  override isTypescript(): this is TsTable {
+    return false;
   }
 }
 
@@ -375,7 +349,7 @@ export class TsTable extends Table {
     }
 
     return [...this.columns.values()].map((col) => {
-      const cell = col.as_array().at(rowId);
+      const cell = col.nth(rowId);
       if (cell === undefined) {
         throw new Error(`Unexpected undefined for cell in row ${rowId}`);
       }
@@ -393,7 +367,11 @@ export class TsTable extends Table {
     return visitor.visitTsTable(this);
   }
 
-  override getImpl(): TableImpl {
-    return TableImpl.Typescript;
+  override isPolars(): this is PolarsTable {
+    return false;
+  }
+
+  override isTypescript(): this is TsTable {
+    return true;
   }
 }
