@@ -11,7 +11,10 @@ import {
   isReference,
 } from 'langium';
 
-import { type OperatorEvaluatorRegistry } from '../expressions';
+import {
+  InternalValueRepresentation,
+  type OperatorEvaluatorRegistry,
+} from '../expressions';
 import {
   type BlockTypePipeline,
   type BuiltinConstrainttypeDefinition,
@@ -38,6 +41,7 @@ import { type PrimitiveValueType, type ValueType } from './value-type';
 import { AtomicValueType } from './value-type/atomic-value-type';
 import { CollectionValueType } from './value-type/primitive/collection/collection-value-type';
 import { type ValueTypeProvider } from './value-type/primitive/primitive-value-type-provider';
+import { IpcNetConnectOpts } from 'net';
 
 abstract class AstNodeWrapperFactory<
   N extends AstNode,
@@ -318,9 +322,9 @@ class ValueTypeWrapperFactory {
     private readonly primitiveValueTypeProvider: ValueTypeProvider,
   ) {}
 
-  wrap(
+  wrap<T extends InternalValueRepresentation = InternalValueRepresentation>(
     identifier: ValuetypeDefinition | ValueTypeReference | undefined,
-  ): ValueType | undefined {
+  ): ValueType<T> | undefined {
     if (identifier === undefined) {
       return undefined;
     } else if (isValueTypeReference(identifier)) {
@@ -347,7 +351,9 @@ class ValueTypeWrapperFactory {
     assertUnreachable(identifier);
   }
 
-  wrapCollection(collectionRef: ValueTypeReference): CollectionValueType {
+  wrapCollection<
+    T extends InternalValueRepresentation = InternalValueRepresentation,
+  >(collectionRef: ValueTypeReference): CollectionValueType<T> {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const collectionDefinition = collectionRef?.reference?.ref;
     assert(collectionDefinition?.name === 'Collection');
@@ -359,7 +365,7 @@ class ValueTypeWrapperFactory {
     }
     const generic = collectionGenerics[0];
     assert(generic !== undefined);
-    const elementValuetype = this.wrap(generic.ref);
+    const elementValuetype = this.wrap<T>(generic.ref);
     if (elementValuetype === undefined) {
       throw new Error(
         "Could not create value type for the elements' type of value type Collection",
@@ -368,9 +374,9 @@ class ValueTypeWrapperFactory {
     return new CollectionValueType(elementValuetype);
   }
 
-  wrapPrimitive(
-    builtinValuetype: ValuetypeDefinition,
-  ): PrimitiveValueType | undefined {
+  wrapPrimitive<
+    T extends InternalValueRepresentation = InternalValueRepresentation,
+  >(builtinValuetype: ValuetypeDefinition): PrimitiveValueType<T> | undefined {
     assert(builtinValuetype.isBuiltin);
     const name = builtinValuetype.name;
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

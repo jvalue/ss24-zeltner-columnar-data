@@ -27,7 +27,14 @@ export type PolarsInternalValueRepresentation =
   | PolarsInternalValueRepresentation[]
   | [];
 
-export type PolarsAtomicInternalValueRepresentation = PlType;
+export type PolarsAtomicInternalValueRepresentation =
+  | PlType
+  | ValuetypeAssignment
+  | BlockTypeProperty
+  | TransformDefinition
+  | RegExp
+  | CellRangeLiteral
+  | ConstraintDefinition;
 
 export type TsInternalValueRepresentation =
   | TsAtomicInternalValueRepresentation
@@ -35,7 +42,6 @@ export type TsInternalValueRepresentation =
   | [];
 
 export type TsAtomicInternalValueRepresentation =
-  | PlType
   | boolean
   | number
   | string

@@ -108,7 +108,6 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
   public readonly ioType = IOType.TABLE;
 
   abstract withColumn(column: TableColumn): Table;
-  abstract filter<F>(cond: F): Table;
   abstract getNumberOfRows(): number;
   abstract getNumberOfColumns(): number;
   abstract hasColumn(name: string): boolean;
@@ -199,10 +198,6 @@ export class PolarsTable extends Table {
     }
   }
 
-  override filter<F>(cond: F): PolarsTable {
-    throw new Error('filter() not implemented.');
-  }
-
   override getColumns(): readonly PolarsTableColumn[] {
     const seriess = this.df.getColumns();
     return seriess.map((s) => {
@@ -260,10 +255,6 @@ export class TsTable extends Table {
     const nt = this.clone();
     nt.columns.set(column.name, column);
     return nt;
-  }
-
-  override filter<F>(cond: F): TsTable {
-    throw new Error('filter() not implemented.');
   }
 
   /**

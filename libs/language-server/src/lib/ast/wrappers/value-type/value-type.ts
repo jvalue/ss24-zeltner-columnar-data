@@ -6,6 +6,7 @@ import { type InternalValueRepresentation } from '../../expressions/internal-val
 
 import { type AtomicValueType } from './atomic-value-type';
 import {
+  PolarsValueType,
   type BooleanValuetype,
   type CellRangeValuetype,
   type CollectionValueType,
@@ -80,6 +81,7 @@ export abstract class ValueTypeVisitor<R = unknown> {
   abstract visitBoolean(valueType: BooleanValuetype): R;
   abstract visitDecimal(valueType: DecimalValuetype): R;
   abstract visitInteger(valueType: IntegerValuetype): R;
+  abstract visitBool(valueType: PolarsValueType): R;
   abstract visitText(valueType: TextValuetype): R;
 
   abstract visitCellRange(valueType: CellRangeValuetype): R;

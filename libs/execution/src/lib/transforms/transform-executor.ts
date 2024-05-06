@@ -9,60 +9,36 @@ import {
   type TransformDefinition,
   type TransformOutputAssignment,
   type TransformPortDefinition,
+  type TsInternalValueRepresentation,
   type ValueType,
   evaluateExpression,
-  TsInternalValueRepresentation,
 } from '@jvalue/jayvee-language-server';
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
-import {
-  type Table,
-  type TableColumn,
-  type TsTable,
-  TsTableColumn,
-} from '../types/io-types/table';
+import { type TableColumn, TsTableColumn } from '../types/io-types/table';
 
-export interface PortDetails {
+export interface PortDetails<
+  T extends InternalValueRepresentation = InternalValueRepresentation,
+> {
   port: TransformPortDefinition;
-  valueType: ValueType;
+  valueType: ValueType<T>;
 }
 
 export abstract class TransformExecutor<I, O> {
   constructor(
-    private readonly transform: TransformDefinition,
-    private readonly context: ExecutionContext,
+    protected readonly transform: TransformDefinition,
+    protected readonly context: ExecutionContext,
   ) {}
 
-  getInputDetails(): PortDetails[] {
-    return this.getPortDetails('from');
-  }
+  abstract getInputDetails(): PortDetails[];
 
-  getOutputDetails(): PortDetails {
-    const portDetails = this.getPortDetails('to');
-    assert(portDetails.length === 1);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return portDetails[0]!;
-  }
+  abstract getOutputDetails(): PortDetails;
 
-  private getPortDetails(kind: TransformPortDefinition['kind']): {
+  protected abstract getPortDetails(kind: TransformPortDefinition['kind']): {
     port: TransformPortDefinition;
     valueType: ValueType;
-  }[] {
-    const ports = this.transform.body.ports.filter((x) => x.kind === kind);
-    const portDetails = ports.map((port) => {
-      const valueTypeNode = port.valueType;
-      const valueType =
-        this.context.wrapperFactories.ValueType.wrap(valueTypeNode);
-      assert(valueType !== undefined);
-      return {
-        port: port,
-        valueType: valueType,
-      };
-    });
-
-    return portDetails;
-  }
+  }[];
 
   getOutputAssignment(): TransformOutputAssignment {
     const outputAssignments = this.transform.body.outputAssignments;
@@ -93,6 +69,36 @@ export class TsTransformExecutor extends TransformExecutor<
     rowsToDelete: number[];
   }
 > {
+  override getInputDetails(): PortDetails<TsInternalValueRepresentation>[] {
+    return this.getPortDetails('from');
+  }
+
+  override getOutputDetails(): PortDetails<TsInternalValueRepresentation> {
+    const portDetails = this.getPortDetails('to');
+    assert(portDetails.length === 1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return portDetails[0]!;
+  }
+
+  protected override getPortDetails(kind: TransformPortDefinition['kind']): {
+    port: TransformPortDefinition;
+    valueType: ValueType<TsInternalValueRepresentation>;
+  }[] {
+    const ports = this.transform.body.ports.filter((x) => x.kind === kind);
+    const portDetails = ports.map((port) => {
+      const valueTypeNode = port.valueType;
+      const valueType: ValueType<TsInternalValueRepresentation> | undefined =
+        this.context.wrapperFactories.ValueType.wrap(valueTypeNode);
+      assert(valueType !== undefined);
+      return {
+        port: port,
+        valueType: valueType,
+      };
+    });
+
+    return portDetails;
+  }
+
   protected override doExecuteTransform(
     input: {
       columns: Map<string, TsTableColumn>;
@@ -106,7 +112,7 @@ export class TsTransformExecutor extends TransformExecutor<
     const inputDetailsList = this.getInputDetails();
     const outputDetails = this.getOutputDetails();
 
-    const newColumn: InternalValueRepresentation[] = [];
+    const newColumn: TsInternalValueRepresentation[] = [];
     const rowsToDelete: number[] = [];
 
     for (let rowIndex = 0; rowIndex < input.numberOfRows; ++rowIndex) {

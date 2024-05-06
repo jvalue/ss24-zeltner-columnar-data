@@ -46,7 +46,9 @@ export class PrimitiveValueTypeProvider {
 
   Transform = new TransformValuetype();
 
-  getAll(): PrimitiveValueType[] {
+  getAll<
+    T extends InternalValueRepresentation = InternalValueRepresentation,
+  >(): PrimitiveValueType<T>[] {
     return [
       this.Boolean,
       this.Decimal,
