@@ -2,14 +2,16 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type Bool } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import { type ValueTypeVisitor } from '../value-type';
 
 import { PrimitiveValueType } from './primitive-value-type';
 
-export class BooleanValuetype extends PrimitiveValueType<boolean> {
+export class TsBooleanValuetype extends PrimitiveValueType<boolean> {
   acceptVisitor<R>(visitor: ValueTypeVisitor<R>): R {
-    return visitor.visitBoolean(this);
+    return visitor.visitTsBoolean(this);
   }
 
   override isAllowedAsRuntimeParameter(): boolean {
@@ -35,5 +37,22 @@ export class BooleanValuetype extends PrimitiveValueType<boolean> {
 A boolean value.
 Examples: true, false
 `.trim();
+  }
+}
+
+export class PolarsBoolenValuetype extends PrimitiveValueType<Bool> {
+  override acceptVisitor<R>(visitor: ValueTypeVisitor<R>): R {
+    return visitor.visitPolarsBoolean(this);
+  }
+  override isAllowedAsRuntimeParameter(): boolean {
+    return true;
+  }
+  override isInternalValueRepresentation(
+    operandValue: InternalValueRepresentation | undefined,
+  ): operandValue is Bool {
+    return operandValue?.toString() === 'Bool';
+  }
+  override getName(): 'bool' {
+    return 'bool';
   }
 }

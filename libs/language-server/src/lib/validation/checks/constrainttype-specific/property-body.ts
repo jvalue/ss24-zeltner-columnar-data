@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type Bool, type Float64, type Int64 } from 'nodejs-polars';
+
 import { type PropertyBody, evaluatePropertyValue } from '../../../ast';
 import { type JayveeValidationProps } from '../../validation-registry';
 
@@ -33,18 +35,20 @@ function checkLengthConstraintPropertyBody(
     return;
   }
 
-  const minLength = evaluatePropertyValue(
+  const minLength = evaluatePropertyValue<number | Int64>(
     minLengthProperty,
     props.evaluationContext,
     props.wrapperFactories,
     props.valueTypeProvider.Primitives.Integer,
   );
-  const maxLength = evaluatePropertyValue(
+
+  const maxLength = evaluatePropertyValue<number | Int64>(
     maxLengthProperty,
     props.evaluationContext,
     props.wrapperFactories,
     props.valueTypeProvider.Primitives.Integer,
   );
+
   if (minLength === undefined || maxLength === undefined) {
     return;
   }
@@ -75,13 +79,13 @@ function checkRangeConstraintPropertyBody(
     return;
   }
 
-  const lowerBound = evaluatePropertyValue(
+  const lowerBound = evaluatePropertyValue<Float64 | number>(
     lowerBoundProperty,
     props.evaluationContext,
     props.wrapperFactories,
     props.valueTypeProvider.Primitives.Decimal,
   );
-  const upperBound = evaluatePropertyValue(
+  const upperBound = evaluatePropertyValue<Float64 | number>(
     upperBoundProperty,
     props.evaluationContext,
     props.wrapperFactories,
@@ -112,7 +116,7 @@ function checkRangeConstraintPropertyBody(
   if (lowerBound === upperBound) {
     let lowerBoundInclusive = true;
     if (lowerBoundInclusiveProperty !== undefined) {
-      const expressionValue = evaluatePropertyValue(
+      const expressionValue = evaluatePropertyValue<boolean | Bool>(
         lowerBoundInclusiveProperty,
         props.evaluationContext,
         props.wrapperFactories,
@@ -121,12 +125,16 @@ function checkRangeConstraintPropertyBody(
       if (expressionValue === undefined) {
         return;
       }
-      lowerBoundInclusive = expressionValue;
+      if (typeof expressionValue === 'boolean') {
+        lowerBoundInclusive = expressionValue;
+      } else {
+        lowerBoundInclusive = expressionValue.toString() === 'true';
+      }
     }
 
     let upperBoundInclusive = true;
     if (upperBoundInclusiveProperty !== undefined) {
-      const expressionValue = evaluatePropertyValue(
+      const expressionValue = evaluatePropertyValue<boolean | Bool>(
         upperBoundInclusiveProperty,
         props.evaluationContext,
         props.wrapperFactories,
@@ -135,7 +143,11 @@ function checkRangeConstraintPropertyBody(
       if (expressionValue === undefined) {
         return;
       }
-      upperBoundInclusive = expressionValue;
+      if (typeof expressionValue === 'boolean') {
+        lowerBoundInclusive = expressionValue;
+      } else {
+        upperBoundInclusive = expressionValue.toString() === 'true';
+      }
     }
 
     const errorMessage =

@@ -12,8 +12,9 @@ import {
 } from 'langium';
 
 import {
-  InternalValueRepresentation,
   type OperatorEvaluatorRegistry,
+  type PolarsInternalValueRepresentation,
+  type TsInternalValueRepresentation,
 } from '../expressions';
 import {
   type BlockTypePipeline,
@@ -40,8 +41,11 @@ import { ConstraintTypeWrapper } from './typed-object/constrainttype-wrapper';
 import { type PrimitiveValueType, type ValueType } from './value-type';
 import { AtomicValueType } from './value-type/atomic-value-type';
 import { CollectionValueType } from './value-type/primitive/collection/collection-value-type';
-import { type ValueTypeProvider } from './value-type/primitive/primitive-value-type-provider';
-import { IpcNetConnectOpts } from 'net';
+import {
+  type PolarsValueTypeProvider,
+  type TsValueTypeProvider,
+  type ValueTypeProvider,
+} from './value-type/primitive/primitive-value-type-provider';
 
 abstract class AstNodeWrapperFactory<
   N extends AstNode,
@@ -70,18 +74,18 @@ abstract class AstNodeWrapperFactory<
   }
 }
 
-export class WrapperFactoryProvider {
+export abstract class WrapperFactoryProvider {
   readonly BlockType: BlockTypeWrapperFactory;
   readonly ConstraintType: ConstraintTypeWrapperFactory;
   readonly Pipeline: PipelineWrapperFactory;
   readonly Pipe: PipeWrapperFactory;
   readonly CellRange: CellRangeWrapperFactory;
   readonly TypedObject: TypedObjectWrapperFactory;
-  readonly ValueType: ValueTypeWrapperFactory;
+  abstract readonly ValueType: ValueTypeWrapperFactory;
 
   constructor(
-    private readonly operatorEvaluatorRegistry: OperatorEvaluatorRegistry,
-    private readonly primitiveValueTypeContainer: ValueTypeProvider,
+    protected readonly operatorEvaluatorRegistry: OperatorEvaluatorRegistry,
+    protected readonly primitiveValueTypeContainer: ValueTypeProvider,
   ) {
     this.CellRange = new CellRangeWrapperFactory();
     this.BlockType = new BlockTypeWrapperFactory(
@@ -100,7 +104,33 @@ export class WrapperFactoryProvider {
       this.BlockType,
       this.ConstraintType,
     );
-    this.ValueType = new ValueTypeWrapperFactory(
+  }
+}
+
+export class PolarsWrapperFactoryProvider extends WrapperFactoryProvider {
+  override readonly ValueType: PolarsValueTypeWrapperFactory;
+
+  constructor(
+    operatorEvaluatorRegistry: OperatorEvaluatorRegistry,
+    protected override readonly primitiveValueTypeContainer: PolarsValueTypeProvider,
+  ) {
+    super(operatorEvaluatorRegistry, primitiveValueTypeContainer);
+    this.ValueType = new PolarsValueTypeWrapperFactory(
+      this,
+      primitiveValueTypeContainer,
+    );
+  }
+}
+
+export class TsWrapperFactoryProvider extends WrapperFactoryProvider {
+  override readonly ValueType: TsValueTypeWrapperFactory;
+
+  constructor(
+    operatorEvaluatorRegistry: OperatorEvaluatorRegistry,
+    protected override readonly primitiveValueTypeContainer: TsValueTypeProvider,
+  ) {
+    super(operatorEvaluatorRegistry, primitiveValueTypeContainer);
+    this.ValueType = new TsValueTypeWrapperFactory(
       this,
       primitiveValueTypeContainer,
     );
@@ -316,15 +346,36 @@ class TypedObjectWrapperFactory {
   }
 }
 
-class ValueTypeWrapperFactory {
+abstract class ValueTypeWrapperFactory {
   constructor(
-    private readonly wrapperFactories: WrapperFactoryProvider,
-    private readonly primitiveValueTypeProvider: ValueTypeProvider,
+    protected readonly wrapperFactories: WrapperFactoryProvider,
+    protected readonly primitiveValueTypeProvider: ValueTypeProvider,
   ) {}
 
-  wrap<T extends InternalValueRepresentation = InternalValueRepresentation>(
+  abstract wrap(
     identifier: ValuetypeDefinition | ValueTypeReference | undefined,
-  ): ValueType<T> | undefined {
+  ): ValueType | undefined;
+
+  abstract wrapCollection(
+    collectionRef: ValueTypeReference,
+  ): CollectionValueType;
+
+  abstract wrapPrimitive(
+    builtinValuetype: ValuetypeDefinition,
+  ): PrimitiveValueType | undefined;
+}
+
+class PolarsValueTypeWrapperFactory extends ValueTypeWrapperFactory {
+  constructor(
+    wrapperFactories: WrapperFactoryProvider,
+    protected override readonly primitiveValueTypeProvider: PolarsValueTypeProvider,
+  ) {
+    super(wrapperFactories, primitiveValueTypeProvider);
+  }
+
+  override wrap(
+    identifier: ValuetypeDefinition | ValueTypeReference | undefined,
+  ): ValueType<PolarsInternalValueRepresentation> | undefined {
     if (identifier === undefined) {
       return undefined;
     } else if (isValueTypeReference(identifier)) {
@@ -342,7 +393,7 @@ class ValueTypeWrapperFactory {
       if (identifier.isBuiltin) {
         return this.wrapPrimitive(identifier);
       }
-      return new AtomicValueType(
+      return new AtomicValueType<PolarsInternalValueRepresentation>(
         identifier,
         this.primitiveValueTypeProvider,
         this.wrapperFactories,
@@ -351,9 +402,9 @@ class ValueTypeWrapperFactory {
     assertUnreachable(identifier);
   }
 
-  wrapCollection<
-    T extends InternalValueRepresentation = InternalValueRepresentation,
-  >(collectionRef: ValueTypeReference): CollectionValueType<T> {
+  override wrapCollection(
+    collectionRef: ValueTypeReference,
+  ): CollectionValueType<PolarsInternalValueRepresentation> {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const collectionDefinition = collectionRef?.reference?.ref;
     assert(collectionDefinition?.name === 'Collection');
@@ -365,7 +416,7 @@ class ValueTypeWrapperFactory {
     }
     const generic = collectionGenerics[0];
     assert(generic !== undefined);
-    const elementValuetype = this.wrap<T>(generic.ref);
+    const elementValuetype = this.wrap(generic.ref);
     if (elementValuetype === undefined) {
       throw new Error(
         "Could not create value type for the elements' type of value type Collection",
@@ -374,9 +425,9 @@ class ValueTypeWrapperFactory {
     return new CollectionValueType(elementValuetype);
   }
 
-  wrapPrimitive<
-    T extends InternalValueRepresentation = InternalValueRepresentation,
-  >(builtinValuetype: ValuetypeDefinition): PrimitiveValueType<T> | undefined {
+  override wrapPrimitive(
+    builtinValuetype: ValuetypeDefinition,
+  ): PrimitiveValueType<PolarsInternalValueRepresentation> | undefined {
     assert(builtinValuetype.isBuiltin);
     const name = builtinValuetype.name;
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -386,7 +437,97 @@ class ValueTypeWrapperFactory {
 
     const matchingPrimitives =
       this.primitiveValueTypeProvider.Primitives.getAll().filter(
-        (valueType) => valueType.getName() === name,
+        (valueType: ValueType<PolarsInternalValueRepresentation>) =>
+          valueType.getName() === name,
+      );
+    if (matchingPrimitives.length === 0) {
+      throw new Error(
+        `Found no PrimitiveValuetype for builtin value type "${name}"`,
+      );
+    }
+    if (matchingPrimitives.length > 1) {
+      throw new Error(
+        `Found multiple ambiguous PrimitiveValuetype for builtin value type "${name}"`,
+      );
+    }
+    return matchingPrimitives[0];
+  }
+}
+
+class TsValueTypeWrapperFactory extends ValueTypeWrapperFactory {
+  constructor(
+    wrapperFactories: WrapperFactoryProvider,
+    protected override readonly primitiveValueTypeProvider: TsValueTypeProvider,
+  ) {
+    super(wrapperFactories, primitiveValueTypeProvider);
+  }
+
+  override wrap(
+    identifier: ValuetypeDefinition | ValueTypeReference | undefined,
+  ): ValueType<TsInternalValueRepresentation> | undefined {
+    if (identifier === undefined) {
+      return undefined;
+    } else if (isValueTypeReference(identifier)) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      const valueTypeDefinition = identifier?.reference?.ref;
+      if (valueTypeDefinition?.name === 'Collection') {
+        return this.wrapCollection(identifier);
+      }
+      return this.wrap(valueTypeDefinition);
+    } else if (isValuetypeDefinition(identifier)) {
+      if (identifier.name === 'Collection') {
+        // We don't have an object representing a generic collection
+        return;
+      }
+      if (identifier.isBuiltin) {
+        return this.wrapPrimitive(identifier);
+      }
+      return new AtomicValueType<TsInternalValueRepresentation>(
+        identifier,
+        this.primitiveValueTypeProvider,
+        this.wrapperFactories,
+      );
+    }
+    assertUnreachable(identifier);
+  }
+
+  override wrapCollection(
+    collectionRef: ValueTypeReference,
+  ): CollectionValueType<TsInternalValueRepresentation> {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const collectionDefinition = collectionRef?.reference?.ref;
+    assert(collectionDefinition?.name === 'Collection');
+    const collectionGenerics = collectionRef.genericRefs;
+    if (collectionGenerics.length !== 1) {
+      throw new Error(
+        "Valuetype Collection needs exactly one generic parameter to define its elements' type",
+      );
+    }
+    const generic = collectionGenerics[0];
+    assert(generic !== undefined);
+    const elementValuetype = this.wrap(generic.ref);
+    if (elementValuetype === undefined) {
+      throw new Error(
+        "Could not create value type for the elements' type of value type Collection",
+      );
+    }
+    return new CollectionValueType(elementValuetype);
+  }
+
+  override wrapPrimitive(
+    builtinValuetype: ValuetypeDefinition,
+  ): PrimitiveValueType<TsInternalValueRepresentation> | undefined {
+    assert(builtinValuetype.isBuiltin);
+    const name = builtinValuetype.name;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (name === undefined) {
+      return undefined;
+    }
+
+    const matchingPrimitives =
+      this.primitiveValueTypeProvider.Primitives.getAll().filter(
+        (valueType: ValueType<TsInternalValueRepresentation>) =>
+          valueType.getName() === name,
       );
     if (matchingPrimitives.length === 0) {
       throw new Error(

@@ -8,6 +8,7 @@ import { assertUnreachable } from 'langium';
 
 import { type ValidationContext } from '../../validation';
 import {
+  type CollectionLiteral,
   type Expression,
   type PropertyAssignment,
   type ValueLiteral,
@@ -28,8 +29,12 @@ import { type ValueType, type WrapperFactoryProvider } from '../wrappers';
 
 import { type EvaluationContext } from './evaluation-context';
 import { EvaluationStrategy } from './evaluation-strategy';
-import { type InternalValueRepresentation } from './internal-value-representation';
-import { isEveryValueDefined } from './typeguards';
+import {
+  type InternalValueRepresentation,
+  type PolarsInternalValueRepresentation,
+  type TsInternalValueRepresentation,
+} from './internal-value-representation';
+import { noMixedImplementations } from './typeguards';
 
 export function evaluatePropertyValue<T extends InternalValueRepresentation>(
   property: PropertyAssignment,
@@ -140,6 +145,31 @@ export function evaluateExpression(
   assertUnreachable(expression);
 }
 
+function collectionHelper(
+  expression: CollectionLiteral,
+  evaluationContext: EvaluationContext,
+  wrapperFactories: WrapperFactoryProvider,
+  validationContext: ValidationContext | undefined = undefined,
+  strategy: EvaluationStrategy = EvaluationStrategy.LAZY,
+):
+  | TsInternalValueRepresentation[]
+  | PolarsInternalValueRepresentation[]
+  | undefined {
+  const evaluatedCollection = expression.values.map((v) =>
+    evaluateExpression(
+      v,
+      evaluationContext,
+      wrapperFactories,
+      validationContext,
+      strategy,
+    ),
+  );
+  if (!noMixedImplementations(evaluatedCollection)) {
+    return undefined;
+  }
+  return evaluatedCollection;
+}
+
 function evaluateValueLiteral(
   expression: ValueLiteral,
   evaluationContext: EvaluationContext,
@@ -148,19 +178,13 @@ function evaluateValueLiteral(
   strategy: EvaluationStrategy = EvaluationStrategy.LAZY,
 ): InternalValueRepresentation | undefined {
   if (isCollectionLiteral(expression)) {
-    const evaluatedCollection = expression.values.map((v) =>
-      evaluateExpression(
-        v,
-        evaluationContext,
-        wrapperFactories,
-        validationContext,
-        strategy,
-      ),
+    return collectionHelper(
+      expression,
+      evaluationContext,
+      wrapperFactories,
+      validationContext,
+      strategy,
     );
-    if (!isEveryValueDefined(evaluatedCollection)) {
-      return undefined;
-    }
-    return evaluatedCollection;
   }
   if (isCellRangeLiteral(expression)) {
     if (!wrapperFactories.CellRange.canWrap(expression)) {

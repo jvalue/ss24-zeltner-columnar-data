@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type Int64 } from 'nodejs-polars';
+
 import {
   type PropertyAssignment,
   type PropertySpecification,
@@ -49,7 +51,7 @@ function checkNonNegative(
   property: PropertyAssignment,
   props: JayveeValidationProps,
 ) {
-  const value = evaluatePropertyValue(
+  let value = evaluatePropertyValue<number | Int64>(
     property,
     props.evaluationContext,
     props.wrapperFactories,
@@ -57,6 +59,10 @@ function checkNonNegative(
   );
   if (value === undefined) {
     return;
+  }
+
+  if (typeof value !== 'number') {
+    value = Number.parseInt(value.toString(), 10);
   }
 
   if (value < 0) {

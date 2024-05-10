@@ -5,13 +5,15 @@
 import {
   type InternalValueRepresentation,
   type InternalValueRepresentationTypeguard,
+  type PolarsInternalValueRepresentation,
+  type TsInternalValueRepresentation,
 } from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD, STRING_TYPEGUARD } from '../typeguards';
 
 export class InOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
   InternalValueRepresentation,
-  InternalValueRepresentation[],
+  PolarsInternalValueRepresentation[] | TsInternalValueRepresentation[],
   boolean
 > {
   constructor() {

@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type Int64 } from 'nodejs-polars';
+
 import {
   type InternalValueRepresentation,
   type PropertyAssignment,
@@ -352,15 +354,21 @@ function checkTextLineDeleterProperty(
 ) {
   if (propName === 'lines') {
     const minTextLineIndex = 1;
-    const lines = evaluatePropertyValue(
+    let lines: Int64[] | number[] | undefined = undefined;
+
+    lines = evaluatePropertyValue(
       property,
       props.evaluationContext,
       props.wrapperFactories,
-      props.valueTypeProvider.createCollectionValueTypeOf(
+      props.valueTypeProvider.createCollectionValueTypeOf<number | Int64>(
         props.valueTypeProvider.Primitives.Integer,
       ),
     );
+
     lines?.forEach((value, index) => {
+      if (typeof value !== 'number') {
+        value = Number.parseInt(value.toString(), 10);
+      }
       if (value < minTextLineIndex) {
         props.validationContext.accept(
           'error',

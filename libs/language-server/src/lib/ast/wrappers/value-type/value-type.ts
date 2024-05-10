@@ -6,17 +6,20 @@ import { type InternalValueRepresentation } from '../../expressions/internal-val
 
 import { type AtomicValueType } from './atomic-value-type';
 import {
-  PolarsValueType,
-  type BooleanValuetype,
   type CellRangeValuetype,
   type CollectionValueType,
   type ConstraintValuetype,
-  type DecimalValuetype,
   type EmptyCollectionValueType,
-  type IntegerValuetype,
+  type PolarsBoolenValuetype,
+  type PolarsDecimalValuetype,
+  type PolarsIntegerValuetype,
+  type PolarsTextValuetype,
   type RegexValuetype,
-  type TextValuetype,
   type TransformValuetype,
+  type TsBooleanValuetype,
+  type TsDecimalValuetype,
+  type TsIntegerValuetype,
+  type TsTextValuetype,
   type ValuetypeAssignmentValuetype,
 } from './primitive';
 
@@ -78,11 +81,14 @@ export interface ValueType<
 }
 
 export abstract class ValueTypeVisitor<R = unknown> {
-  abstract visitBoolean(valueType: BooleanValuetype): R;
-  abstract visitDecimal(valueType: DecimalValuetype): R;
-  abstract visitInteger(valueType: IntegerValuetype): R;
-  abstract visitBool(valueType: PolarsValueType): R;
-  abstract visitText(valueType: TextValuetype): R;
+  abstract visitTsBoolean(valueType: TsBooleanValuetype): R;
+  abstract visitTsDecimal(valueType: TsDecimalValuetype): R;
+  abstract visitTsInteger(valueType: TsIntegerValuetype): R;
+  abstract visitPolarsBoolean(valueType: PolarsBoolenValuetype): R;
+  abstract visitPolarsInteger(valueType: PolarsIntegerValuetype): R;
+  abstract visitPolarsDecimal(valueType: PolarsDecimalValuetype): R;
+  abstract visitPolarsText(valueType: PolarsTextValuetype): R;
+  abstract visitTsText(valueType: TsTextValuetype): R;
 
   abstract visitCellRange(valueType: CellRangeValuetype): R;
   abstract visitRegex(valueType: RegexValuetype): R;

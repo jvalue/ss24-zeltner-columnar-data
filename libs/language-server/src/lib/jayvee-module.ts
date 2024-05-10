@@ -24,8 +24,16 @@ import {
   JayveeGeneratedModule,
   JayveeGeneratedSharedModule,
 } from './ast/generated/module';
-import { ValueTypeProvider } from './ast/wrappers/value-type/primitive/primitive-value-type-provider';
-import { WrapperFactoryProvider } from './ast/wrappers/wrapper-factory-provider';
+import {
+  PolarsValueTypeProvider,
+  TsValueTypeProvider,
+  type ValueTypeProvider,
+} from './ast/wrappers/value-type/primitive/primitive-value-type-provider';
+import {
+  PolarsWrapperFactoryProvider,
+  TsWrapperFactoryProvider,
+  type WrapperFactoryProvider,
+} from './ast/wrappers/wrapper-factory-provider';
 import { JayveeWorkspaceManager } from './builtin-library/jayvee-workspace-manager';
 import { JayveeCompletionProvider } from './completion/jayvee-completion-provider';
 import { JayveeHoverProvider } from './hover/jayvee-hover-provider';
@@ -88,12 +96,24 @@ export const JayveeModule: Module<
       ),
     EvaluatorRegistry: () => new DefaultOperatorEvaluatorRegistry(),
   },
-  ValueTypeProvider: () => new ValueTypeProvider(),
-  WrapperFactories: (services) =>
-    new WrapperFactoryProvider(
-      services.operators.EvaluatorRegistry,
-      services.ValueTypeProvider,
-    ),
+  ValueTypeProvider: (services): ValueTypeProvider =>
+    services.RuntimeParameterProvider.hasValue('usePolars')
+      ? new PolarsValueTypeProvider()
+      : new TsValueTypeProvider(),
+  WrapperFactories: (services): WrapperFactoryProvider => {
+    if (services.ValueTypeProvider.isPolars()) {
+      return new PolarsWrapperFactoryProvider(
+        services.operators.EvaluatorRegistry,
+        services.ValueTypeProvider,
+      );
+    } else if (services.ValueTypeProvider.isTypescript()) {
+      return new TsWrapperFactoryProvider(
+        services.operators.EvaluatorRegistry,
+        services.ValueTypeProvider,
+      );
+    }
+    throw new Error('Unsupported valuetypes!');
+  },
 };
 
 export const JayveeSharedModule: Module<

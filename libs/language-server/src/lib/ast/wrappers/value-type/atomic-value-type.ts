@@ -19,8 +19,10 @@ import { type ValueTypeProvider } from './primitive';
 import { CollectionValueType } from './primitive/collection/collection-value-type';
 import { type ValueType, type ValueTypeVisitor } from './value-type';
 
-export class AtomicValueType
-  extends AbstractValueType<InternalValueRepresentation>
+export class AtomicValueType<
+    I extends InternalValueRepresentation = InternalValueRepresentation,
+  >
+  extends AbstractValueType<I>
   implements AstNodeWrapper<ValuetypeDefinition>
 {
   constructor(
@@ -95,8 +97,8 @@ export class AtomicValueType
   }
 
   override isInternalValueRepresentation(
-    operandValue: InternalValueRepresentation | undefined,
-  ): operandValue is InternalValueRepresentation {
+    operandValue: I | undefined,
+  ): operandValue is I {
     const supertype = this.getSupertype();
     if (supertype === undefined) {
       return false;

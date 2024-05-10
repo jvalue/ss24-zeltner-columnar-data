@@ -12,20 +12,32 @@ export {
   type PrimitiveValueType,
 } from './primitive-value-type';
 
-export { type BooleanValuetype } from './boolean-value-type';
+export {
+  type TsBooleanValuetype,
+  type PolarsBoolenValuetype,
+} from './boolean-value-type';
 export { type CellRangeValuetype } from './cell-range-value-type';
 export { type ConstraintValuetype } from './constraint-value-type';
-export { type DecimalValuetype } from './decimal-value-type';
-export { type IntegerValuetype } from './integer-value-type';
+export {
+  type TsDecimalValuetype,
+  type PolarsDecimalValuetype,
+} from './decimal-value-type';
+export {
+  type TsIntegerValuetype,
+  type PolarsIntegerValuetype,
+} from './integer-value-type';
 export { type RegexValuetype } from './regex-value-type';
-export { type TextValuetype } from './text-value-type';
+export {
+  type TsTextValuetype,
+  type PolarsTextValuetype,
+} from './text-value-type';
 export { type ValuetypeAssignmentValuetype } from './value-type-assignment-value-type';
-export { type PolarsValueType } from './polars-value-type';
 export { type TransformValuetype } from './transform-value-type';
 
 export {
   ValueTypeProvider,
-  PrimitiveValueTypeProvider,
+  TsPrimitiveValueTypeProvider,
+  PolarsPrimitiveValueTypeProvider,
 } from './primitive-value-type-provider';
 
 export * from './collection'; // type export handled one level deeper

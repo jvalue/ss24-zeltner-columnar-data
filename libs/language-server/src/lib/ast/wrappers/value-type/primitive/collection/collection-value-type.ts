@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import {
-  type TsAtomicInternalValueRepresentation,
+  type AtomicInternalValueRepresentation,
   type InternalValueRepresentation,
 } from '../../../../expressions/internal-value-representation';
 import { type ValueType, type ValueTypeVisitor } from '../../value-type';
@@ -48,7 +48,7 @@ export class CollectionValueType<
 }
 
 export function isCollectionValueType<
-  I extends TsAtomicInternalValueRepresentation,
+  I extends AtomicInternalValueRepresentation,
 >(v: unknown, elementType: ValueType<I>): v is CollectionValueType<I> {
   return v instanceof CollectionValueType && v.elementType.equals(elementType);
 }

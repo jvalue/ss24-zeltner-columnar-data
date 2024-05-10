@@ -4,6 +4,12 @@
 
 import { strict as assert } from 'assert';
 
+import {
+  type Float64,
+  type Int64,
+  type String as PolarsString,
+} from 'nodejs-polars';
+
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type BinaryExpression } from '../../generated/ast';
 import { type WrapperFactoryProvider } from '../../wrappers';
@@ -65,16 +71,17 @@ export class InOperatorTypeComputer implements BinaryOperatorTypeComputer {
       }
       return undefined;
     }
+
     assert(
-      isCollectionValueType(
+      isCollectionValueType<number | Float64>(
         rightOperandType,
         this.valueTypeProvider.Primitives.Decimal,
       ) ||
-        isCollectionValueType(
+        isCollectionValueType<number | Int64>(
           rightOperandType,
           this.valueTypeProvider.Primitives.Integer,
         ) ||
-        isCollectionValueType(
+        isCollectionValueType<string | PolarsString>(
           rightOperandType,
           this.valueTypeProvider.Primitives.Text,
         ),

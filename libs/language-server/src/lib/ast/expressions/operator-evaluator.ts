@@ -18,6 +18,7 @@ import { EvaluationStrategy } from './evaluation-strategy';
 import {
   type InternalValueRepresentation,
   type InternalValueRepresentationTypeguard,
+  type TsInternalValueRepresentation,
 } from './internal-value-representation';
 import {
   type BinaryExpressionOperator,
@@ -43,8 +44,8 @@ export interface OperatorEvaluator<
 }
 
 export abstract class DefaultUnaryOperatorEvaluator<
-  O extends InternalValueRepresentation,
-  T extends InternalValueRepresentation,
+  O extends TsInternalValueRepresentation,
+  T extends TsInternalValueRepresentation,
 > implements OperatorEvaluator<UnaryExpression>
 {
   constructor(
@@ -203,10 +204,10 @@ export abstract class BooleanShortCircuitOperatorEvaluator
 }
 
 export abstract class DefaultTernaryOperatorEvaluator<
-  FirstValue extends InternalValueRepresentation,
-  SecondValue extends InternalValueRepresentation,
-  ThirdValue extends InternalValueRepresentation,
-  ReturnValue extends InternalValueRepresentation,
+  FirstValue extends TsInternalValueRepresentation,
+  SecondValue extends TsInternalValueRepresentation,
+  ThirdValue extends TsInternalValueRepresentation,
+  ReturnValue extends TsInternalValueRepresentation,
 > implements OperatorEvaluator<TernaryExpression>
 {
   constructor(

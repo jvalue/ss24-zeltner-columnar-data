@@ -2,7 +2,12 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type DataType as PlType } from 'nodejs-polars';
+import {
+  type Bool,
+  type Float64,
+  type Int64,
+  type String as PolarsString,
+} from 'nodejs-polars';
 
 import {
   type BlockTypeProperty,
@@ -27,14 +32,21 @@ export type PolarsInternalValueRepresentation =
   | PolarsInternalValueRepresentation[]
   | [];
 
+export type AtomicInternalValueRepresentation =
+  | PolarsAtomicInternalValueRepresentation
+  | TsAtomicInternalValueRepresentation;
+
 export type PolarsAtomicInternalValueRepresentation =
-  | PlType
-  | ValuetypeAssignment
-  | BlockTypeProperty
-  | TransformDefinition
+  | Bool
+  | Int64
+  | Float64
+  | PolarsString
   | RegExp
   | CellRangeLiteral
-  | ConstraintDefinition;
+  | ConstraintDefinition
+  | ValuetypeAssignment
+  | BlockTypeProperty
+  | TransformDefinition;
 
 export type TsInternalValueRepresentation =
   | TsAtomicInternalValueRepresentation

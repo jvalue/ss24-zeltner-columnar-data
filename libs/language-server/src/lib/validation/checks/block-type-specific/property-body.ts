@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type Int64, type String as PolarsString } from 'nodejs-polars';
+
 import { type PropertyBody, evaluatePropertyValue } from '../../../ast';
 import { type JayveeValidationProps } from '../../validation-registry';
 
@@ -35,13 +37,13 @@ function checkTextRangeSelectorPropertyBody(
     return;
   }
 
-  const lineFrom = evaluatePropertyValue(
+  const lineFrom = evaluatePropertyValue<number | Int64>(
     lineFromProperty,
     props.evaluationContext,
     props.wrapperFactories,
     props.valueTypeProvider.Primitives.Integer,
   );
-  const lineTo = evaluatePropertyValue(
+  const lineTo = evaluatePropertyValue<number | Int64>(
     lineToProperty,
     props.evaluationContext,
     props.wrapperFactories,
@@ -77,7 +79,7 @@ function checkCellWriterPropertyBody(
     writeProperty,
     props.evaluationContext,
     props.wrapperFactories,
-    props.valueTypeProvider.createCollectionValueTypeOf(
+    props.valueTypeProvider.createCollectionValueTypeOf<string | PolarsString>(
       props.valueTypeProvider.Primitives.Text,
     ),
   );
@@ -142,7 +144,7 @@ function checkInputColumnsMatchTransformationPorts(
     inputColumnsProperty,
     props.evaluationContext,
     props.wrapperFactories,
-    props.valueTypeProvider.createCollectionValueTypeOf(
+    props.valueTypeProvider.createCollectionValueTypeOf<string | PolarsString>(
       props.valueTypeProvider.Primitives.Text,
     ),
   );
