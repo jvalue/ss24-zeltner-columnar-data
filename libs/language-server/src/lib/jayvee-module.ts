@@ -27,10 +27,14 @@ import { WrapperFactoryProvider } from './ast/wrappers/wrapper-factory-provider'
 import { JayveeWorkspaceManager } from './builtin-library/jayvee-workspace-manager';
 import { JayveeValueConverter } from './jayvee-value-converter';
 import {
+  JayveeCodeActionProvider,
   JayveeCompletionProvider,
+  JayveeDefinitionProvider,
   JayveeFormatter,
   JayveeHoverProvider,
+  JayveeScopeProvider,
 } from './lsp';
+import { JayveeImportResolver } from './services/import-resolver';
 import { RuntimeParameterProvider } from './services/runtime-parameter-provider';
 import { JayveeValidationRegistry } from './validation/validation-registry';
 
@@ -49,6 +53,7 @@ export interface JayveeAddedServices {
   validation: {
     ValidationRegistry: JayveeValidationRegistry;
   };
+  ImportResolver: JayveeImportResolver;
 }
 
 /**
@@ -80,6 +85,11 @@ export const JayveeModule: Module<
     HoverProvider: (services: JayveeServices) =>
       new JayveeHoverProvider(services),
     Formatter: () => new JayveeFormatter(),
+    DefinitionProvider: (services) => new JayveeDefinitionProvider(services),
+    CodeActionProvider: (services) => new JayveeCodeActionProvider(services),
+  },
+  references: {
+    ScopeProvider: (services) => new JayveeScopeProvider(services),
   },
   RuntimeParameterProvider: () => new RuntimeParameterProvider(),
   operators: {
@@ -97,6 +107,7 @@ export const JayveeModule: Module<
       services.operators.EvaluatorRegistry,
       services.ValueTypeProvider,
     ),
+  ImportResolver: (services) => new JayveeImportResolver(services),
 };
 
 export const JayveeSharedModule: Module<

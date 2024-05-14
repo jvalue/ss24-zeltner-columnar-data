@@ -5,7 +5,14 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
-import { type LangiumDocuments, type MaybePromise } from 'langium';
+import {
+  type AstNode,
+  AstUtils,
+  type LangiumDocument,
+  type LangiumDocuments,
+  type MaybePromise,
+  UriUtils,
+} from 'langium';
 import {
   type CompletionAcceptor,
   type CompletionContext,
@@ -13,38 +20,45 @@ import {
   DefaultCompletionProvider,
   type NextFeature,
 } from 'langium/lsp';
-import { CompletionItemKind } from 'vscode-languageserver';
+import { CompletionItemKind, type Range } from 'vscode-languageserver';
 
 import { type TypedObjectWrapper, type WrapperFactoryProvider } from '../ast';
 import {
   type BlockDefinition,
   type ConstraintDefinition,
+  type ImportDefinition,
   PropertyAssignment,
   type PropertyBody,
   ValueTypeReference,
   isBlockDefinition,
   isConstraintDefinition,
+  isImportDefinition,
   isJayveeModel,
   isPropertyAssignment,
   isPropertyBody,
+  isValuetypeDefinition,
 } from '../ast/generated/ast';
 import {
   getAllBuiltinBlockTypes,
   getAllBuiltinConstraintTypes,
+  getExportedElements,
 } from '../ast/model-util';
 import { LspDocGenerator } from '../docs/lsp-doc-generator';
 import { type JayveeServices } from '../jayvee-module';
+import { type JayveeImportResolver } from '../services';
 
 const RIGHT_ARROW_SYMBOL = '\u{2192}';
 
 export class JayveeCompletionProvider extends DefaultCompletionProvider {
-  protected langiumDocumentService: LangiumDocuments;
+  protected langiumDocuments: LangiumDocuments;
   protected readonly wrapperFactories: WrapperFactoryProvider;
+  protected readonly importResolver: JayveeImportResolver;
 
   constructor(services: JayveeServices) {
     super(services);
-    this.langiumDocumentService = services.shared.workspace.LangiumDocuments;
+    this.langiumDocuments = services.shared.workspace.LangiumDocuments;
     this.wrapperFactories = services.WrapperFactories;
+    this.importResolver = services.ImportResolver;
   }
 
   override completionFor(
@@ -78,6 +92,18 @@ export class JayveeCompletionProvider extends DefaultCompletionProvider {
       if (isFirstPropertyCompletion || isOtherPropertyCompletion) {
         return this.completionForPropertyName(astNode, context, acceptor);
       }
+
+      const isImportPathCompletion =
+        isImportDefinition(astNode) && next.property === 'path';
+      if (isImportPathCompletion) {
+        return this.completionForImportPath(astNode, context, acceptor);
+      }
+
+      const isImportElementCompletion =
+        isImportDefinition(astNode) && next.property === 'element';
+      if (isImportElementCompletion) {
+        return this.completionForImportElement(astNode, context, acceptor);
+      }
     }
     return super.completionFor(context, next, acceptor);
   }
@@ -87,7 +113,7 @@ export class JayveeCompletionProvider extends DefaultCompletionProvider {
     acceptor: CompletionAcceptor,
   ): MaybePromise<void> {
     const blockTypes = getAllBuiltinBlockTypes(
-      this.langiumDocumentService,
+      this.langiumDocuments,
       this.wrapperFactories,
     );
     blockTypes.forEach((blockType) => {
@@ -113,7 +139,7 @@ export class JayveeCompletionProvider extends DefaultCompletionProvider {
     acceptor: CompletionAcceptor,
   ): MaybePromise<void> {
     const constraintTypes = getAllBuiltinConstraintTypes(
-      this.langiumDocumentService,
+      this.langiumDocuments,
       this.wrapperFactories,
     );
     constraintTypes.forEach((constraintType) => {
@@ -139,13 +165,16 @@ export class JayveeCompletionProvider extends DefaultCompletionProvider {
     context: CompletionContext,
     acceptor: CompletionAcceptor,
   ): MaybePromise<void> {
-    this.langiumDocumentService.all
+    this.langiumDocuments.all
       .map((document) => document.parseResult.value)
       .forEach((parsedDocument) => {
         if (!isJayveeModel(parsedDocument)) {
           throw new Error('Expected parsed document to be a JayveeModel');
         }
-        parsedDocument.valueTypes.forEach((valueTypeDefinition) => {
+        const allValueTypes = AstUtils.streamAllContents(parsedDocument).filter(
+          isValuetypeDefinition,
+        );
+        allValueTypes.forEach((valueTypeDefinition) => {
           const valueType =
             this.wrapperFactories.ValueType.wrap(valueTypeDefinition);
           if (valueType !== undefined && valueType.isReferenceableByUser()) {
@@ -192,6 +221,129 @@ export class JayveeCompletionProvider extends DefaultCompletionProvider {
         propertyKind,
       ).forEach((item) => acceptor(context, item));
     }
+  }
+
+  private completionForImportPath(
+    astNode: ImportDefinition,
+    context: CompletionContext,
+    acceptor: CompletionAcceptor,
+  ) {
+    const documentText = context.textDocument.getText();
+    const existingImportPath = documentText.substring(
+      context.tokenOffset,
+      context.offset,
+    );
+
+    const hasSemicolonAfterPath =
+      documentText.substring(
+        context.tokenEndOffset,
+        context.tokenEndOffset + 1,
+      ) === ';';
+    const pathDelimiter = existingImportPath.startsWith("'") ? "'" : '"';
+
+    const existingImportPathWithoutDelimiter = existingImportPath.replace(
+      pathDelimiter,
+      '',
+    );
+
+    const allPaths = this.getImportPathsFormatted(context.document);
+    const insertRange: Range = {
+      start: context.textDocument.positionAt(context.tokenOffset),
+      end: context.textDocument.positionAt(context.tokenEndOffset),
+    };
+
+    const suitablePaths = allPaths.filter((path) =>
+      path.startsWith(existingImportPathWithoutDelimiter),
+    );
+
+    for (const path of suitablePaths) {
+      const completionValue = `${pathDelimiter}${path}${pathDelimiter}${
+        hasSemicolonAfterPath ? '' : ';'
+      }`;
+      acceptor(context, {
+        label: completionValue, // using path here somehow doesn't work
+        textEdit: {
+          newText: completionValue,
+          range: insertRange,
+        },
+        kind: CompletionItemKind.File,
+      });
+    }
+  }
+
+  private completionForImportElement(
+    importDefinition: ImportDefinition,
+    context: CompletionContext,
+    acceptor: CompletionAcceptor,
+  ) {
+    const resolvedModel = this.importResolver.resolveImport(importDefinition);
+    if (resolvedModel === undefined) {
+      return;
+    }
+
+    const documentText = context.textDocument.getText();
+    const existingElementName = documentText.substring(
+      context.tokenOffset,
+      context.offset,
+    );
+
+    const exportedElementNames = getExportedElements(resolvedModel).map(
+      (x) => x.exportName,
+    );
+
+    const suggestedElementNames = exportedElementNames.filter((x) =>
+      x.startsWith(existingElementName),
+    );
+
+    const insertRange: Range = {
+      start: context.textDocument.positionAt(context.tokenOffset),
+      end: context.textDocument.positionAt(context.tokenEndOffset),
+    };
+
+    for (const elementName of suggestedElementNames) {
+      acceptor(context, {
+        label: elementName,
+        textEdit: {
+          newText: elementName,
+          range: insertRange,
+        },
+        kind: CompletionItemKind.Reference,
+      });
+    }
+  }
+
+  /**
+   * Gets all paths to available documents, formatted as relative paths.
+   * Does not include path to stdlib files as they don't need to be imported.
+   * The paths don't include string delimiters.
+   */
+  private getImportPathsFormatted(
+    currentDocument: LangiumDocument<AstNode>,
+  ): string[] {
+    const allDocuments = this.langiumDocuments.all;
+    const currentDocumentUri = currentDocument.uri.toString();
+
+    const currentDocumentDir = UriUtils.dirname(currentDocument.uri).toString();
+
+    const paths: string[] = [];
+    for (const doc of allDocuments) {
+      if (UriUtils.equals(doc.uri, currentDocumentUri)) {
+        continue;
+      }
+
+      const docUri = doc.uri.toString();
+      if (docUri.includes('builtin:/stdlib')) {
+        continue; // builtins don't need to be imported
+      }
+
+      const relativePath = UriUtils.relative(currentDocumentDir, docUri);
+
+      const relativePathFormatted = relativePath.startsWith('.')
+        ? relativePath
+        : `./${relativePath}`;
+      paths.push(relativePathFormatted);
+    }
+    return paths;
   }
 
   private constructPropertyCompletionValueItems(
