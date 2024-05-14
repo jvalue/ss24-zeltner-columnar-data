@@ -87,7 +87,7 @@ describe('Validation of validation-utils', () => {
           new DefaultOperatorTypeComputerRegistry(
             valueTypeProvider,
             new WrapperFactoryProvider(
-              new DefaultOperatorEvaluatorRegistry(),
+              new DefaultOperatorEvaluatorRegistry(valueTypeProvider),
               valueTypeProvider,
             ),
           ),
@@ -113,7 +113,7 @@ describe('Validation of validation-utils', () => {
           new DefaultOperatorTypeComputerRegistry(
             valueTypeProvider,
             new WrapperFactoryProvider(
-              new DefaultOperatorEvaluatorRegistry(),
+              new DefaultOperatorEvaluatorRegistry(valueTypeProvider),
               valueTypeProvider,
             ),
           ),
@@ -124,7 +124,7 @@ describe('Validation of validation-utils', () => {
       expect(validationAcceptorMock).toHaveBeenNthCalledWith(
         2,
         'error',
-        `The propertyassignment name "textProperty" needs to be unique.`,
+        `The name "textProperty" needs to be unique.`,
         expect.any(Object),
       );
     });

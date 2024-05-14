@@ -76,7 +76,7 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
             .getValueType(context.valueTypeProvider)
             .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
           diagnostic: {
-            node: context.getOrFailProperty('use'),
+            node: context.getOrFailProperty('uses'),
           },
         });
       }
@@ -129,7 +129,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       context.valueTypeProvider.Primitives.Text,
     );
     const usedTransform = context.getPropertyValue(
-      'use',
+      'uses',
       context.valueTypeProvider.Primitives.Transform,
     );
 
@@ -273,38 +273,5 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
     outputTable.dropRows(transformResult.rowsToDelete);
     outputTable.addColumn(outputColumnName, transformResult.resultingColumn);
     return outputTable;
-  }
-
-  protected override checkInputColumnsMatchTransformInputTypes(
-    inputColumnNames: string[],
-    inputTable: R.Table,
-    transformInputDetailsList: PortDetails[],
-    context: R.ExecutionContext,
-  ): R.Result<undefined> {
-    for (let i = 0; i < inputColumnNames.length; ++i) {
-      const inputColumnName = inputColumnNames[i];
-      assert(inputColumnName !== undefined);
-      const inputColumn = inputTable.getColumn(inputColumnName);
-      assert(inputColumn !== undefined);
-
-      const matchingInputDetails = transformInputDetailsList[i];
-      assert(matchingInputDetails !== undefined);
-
-      if (
-        !inputColumn
-          .getValueType(context.valueTypeProvider)
-          .isConvertibleTo(matchingInputDetails.valueType)
-      ) {
-        return R.err({
-          message: `Type ${inputColumn
-            .getValueType(context.valueTypeProvider)
-            .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
-          diagnostic: {
-            node: context.getOrFailProperty('use'),
-          },
-        });
-      }
-    }
-    return R.ok(undefined);
   }
 }
