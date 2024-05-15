@@ -6,15 +6,16 @@
 import { strict as assert } from 'assert';
 
 import {
+  INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD,
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   IOType,
-  everyValueInternalRepresentationTypeguard,
   type InternalValueRepresentation,
   type ValueType,
-  INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD,
+  type ValueTypeProvider,
 } from '@jvalue/jayvee-language-server';
 import { pl } from 'nodejs-polars';
 
+import { type ExecutionContext } from '../../execution-context';
 import {
   SQLColumnTypeVisitor,
   SQLValueRepresentationVisitor,
@@ -26,7 +27,7 @@ import {
 } from './io-type-implementation';
 
 export abstract class TableColumn {
-  abstract getValueType(): ValueType;
+  abstract getValueType(provider: ValueTypeProvider): ValueType;
   abstract getName(): string;
   abstract nth(n: number): InternalValueRepresentation | undefined;
 
@@ -39,8 +40,8 @@ export class PolarsTableColumn extends TableColumn {
     super();
   }
 
-  override getValueType(): ValueType {
-    throw new Error('getValueType() not implemented');
+  override getValueType(provider: ValueTypeProvider): ValueType {
+    return provider.fromPolarsDType(this.series.dtype);
   }
 
   override getName(): string {
@@ -51,9 +52,8 @@ export class PolarsTableColumn extends TableColumn {
     const nth = this.series.getIndex(n) as unknown;
     if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(nth)) {
       return nth;
-    } else {
-      throw new Error('Expected InternalRepresentation');
     }
+    throw new Error('Expected InternalRepresentation');
   }
 
   override isPolars(): this is PolarsTableColumn {
@@ -111,7 +111,6 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
   public readonly ioType = IOType.TABLE;
 
   abstract withColumn(column: TableColumn): Table;
-  abstract filter<F>(cond: F): Table;
   abstract getNumberOfRows(): number;
   abstract getNumberOfColumns(): number;
   abstract hasColumn(name: string): boolean;
@@ -128,7 +127,10 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
     return `DROP TABLE IF EXISTS "${tableName}";`;
   }
 
-  generateInsertValuesStatement(tableName: string): string {
+  generateInsertValuesStatement(
+    tableName: string,
+    context: ExecutionContext,
+  ): string {
     const valueRepresentationVisitor = new SQLValueRepresentationVisitor();
 
     const columnNames = [
@@ -144,7 +146,7 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
         const entry = column?.nth(rowIndex);
         assert(entry !== undefined);
         const formattedValue = column
-          ?.getValueType()
+          ?.getValueType(context.valueTypeProvider)
           .acceptVisitor(valueRepresentationVisitor)(entry);
         assert(formattedValue !== undefined);
         rowValues.push(formattedValue);
@@ -159,13 +161,16 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
     )}`;
   }
 
-  generateCreateTableStatement(tableName: string): string {
+  generateCreateTableStatement(
+    tableName: string,
+    context: ExecutionContext,
+  ): string {
     const columnTypeVisitor = new SQLColumnTypeVisitor();
 
     const columns = [...this.getColumns()];
     const columnStatements = columns.map((column) => {
       return `"${column.getName()}" ${column
-        .getValueType()
+        .getValueType(context.valueTypeProvider)
         .acceptVisitor(columnTypeVisitor)}`;
     });
 
@@ -176,11 +181,8 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
 }
 
 export class PolarsTable extends Table {
-  df: pl.DataFrame = pl.DataFrame();
-
-  public constructor(df: pl.DataFrame) {
+  public constructor(public df: pl.DataFrame = pl.DataFrame()) {
     super();
-    this.df = df;
   }
 
   override withColumn(column: PolarsTableColumn): PolarsTable {
@@ -200,10 +202,6 @@ export class PolarsTable extends Table {
     } catch {
       return false;
     }
-  }
-
-  override filter<F>(cond: F): PolarsTable {
-    throw new Error('filter() not implemented.');
   }
 
   override getColumns(): readonly PolarsTableColumn[] {
@@ -248,13 +246,11 @@ export class PolarsTable extends Table {
 }
 
 export class TsTable extends Table {
-  private numberOfRows = 0;
-
-  private columns = new Map<string, TsTableColumn>();
-
-  public constructor(numberOfRows = 0) {
+  public constructor(
+    private numberOfRows = 0,
+    private columns = new Map<string, TsTableColumn>(),
+  ) {
     super();
-    this.numberOfRows = numberOfRows;
   }
 
   override withColumn(column: TsTableColumn): TsTable {
@@ -262,10 +258,6 @@ export class TsTable extends Table {
     const nt = this.clone();
     nt.columns.set(column.name, column);
     return nt;
-  }
-
-  override filter<F>(cond: F): TsTable {
-    throw new Error('filter() not implemented.');
   }
 
   /**
@@ -359,8 +351,10 @@ export class TsTable extends Table {
   }
 
   override clone(): TsTable {
-    const cloned = new TsTable(this.numberOfRows);
-    cloned.columns = structuredClone(this.columns);
+    const cloned = new TsTable(
+      this.numberOfRows,
+      structuredClone(this.columns),
+    );
     return cloned;
   }
 

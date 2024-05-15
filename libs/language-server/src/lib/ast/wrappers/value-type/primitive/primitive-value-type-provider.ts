@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType as PlDType, pl } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions';
 import { type ValueType } from '../value-type';
 
@@ -30,6 +32,36 @@ export class ValueTypeProvider {
     input: ValueType<I>,
   ): CollectionValueType<I> {
     return new CollectionValueType(input);
+  }
+
+  fromPolarsDType(dtype: PlDType): ValueType {
+    if (dtype.equals(pl.Bool)) {
+      return this.Primitives.Boolean;
+    } else if (dtype.equals(pl.Float32) || dtype.equals(pl.Float64)) {
+      return this.Primitives.Decimal;
+    } else if (
+      dtype.equals(pl.Int8) ||
+      dtype.equals(pl.Int16) ||
+      dtype.equals(pl.Int32) ||
+      dtype.equals(pl.Int64) ||
+      dtype.equals(pl.UInt8) ||
+      dtype.equals(pl.UInt16) ||
+      dtype.equals(pl.UInt32) ||
+      dtype.equals(pl.UInt64)
+    ) {
+      return this.Primitives.Integer;
+    } else if (dtype.equals(pl.String) || dtype.equals(pl.Utf8)) {
+      return this.Primitives.Text;
+    }
+    // TODO:
+    // pl.Categorical
+    // pl.Date
+    // pl.DateTime
+    // pl.List
+    // pl.Null
+    // pl.Struct
+
+    throw new Error(`${dtype.variant} is not supported yet`);
   }
 }
 

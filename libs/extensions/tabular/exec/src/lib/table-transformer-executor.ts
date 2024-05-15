@@ -225,11 +225,13 @@ export class TsTableTransformerExecutor extends AbstractBlockExecutor<
 
       // log if output column type changes
       if (
-        !outputColumn.getValueType().equals(transformOutputDetails.valueType)
+        !outputColumn
+          .getValueType(context.valueTypeProvider)
+          .equals(transformOutputDetails.valueType)
       ) {
         context.logger.logInfo(
           `Column "${outputColumnName}" will change its type from ${outputColumn
-            .getValueType()
+            .getValueType(context.valueTypeProvider)
             .getName()} to ${transformOutputDetails.valueType.getName()}`,
         );
       }

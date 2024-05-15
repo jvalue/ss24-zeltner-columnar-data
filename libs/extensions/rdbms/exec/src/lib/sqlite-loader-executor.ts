@@ -57,11 +57,17 @@ export class SQLiteLoaderExecutor extends AbstractBlockExecutor<
       }
 
       context.logger.logDebug(`Creating table "${table}"`);
-      await this.runQuery(db, input.generateCreateTableStatement(table));
+      await this.runQuery(
+        db,
+        input.generateCreateTableStatement(table, context),
+      );
       context.logger.logDebug(
         `Inserting ${input.getNumberOfRows()} row(s) into table "${table}"`,
       );
-      await this.runQuery(db, input.generateInsertValuesStatement(table));
+      await this.runQuery(
+        db,
+        input.generateInsertValuesStatement(table, context),
+      );
 
       context.logger.logDebug(
         `The data was successfully loaded into the database`,
