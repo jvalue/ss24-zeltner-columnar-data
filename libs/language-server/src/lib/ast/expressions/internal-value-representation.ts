@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type DataType as PlType } from 'nodejs-polars';
-
 import {
   type BlockTypeProperty,
   type CellRangeLiteral,
@@ -19,23 +17,11 @@ import {
 import type { WrapperFactoryProvider } from '../wrappers';
 
 export type InternalValueRepresentation =
-  | PolarsInternalValueRepresentation
-  | TsInternalValueRepresentation;
-
-export type PolarsInternalValueRepresentation =
-  | PolarsAtomicInternalValueRepresentation
-  | PolarsInternalValueRepresentation[]
+  | AtomicInternalValueRepresentation
+  | InternalValueRepresentation[]
   | [];
 
-export type PolarsAtomicInternalValueRepresentation = PlType;
-
-export type TsInternalValueRepresentation =
-  | TsAtomicInternalValueRepresentation
-  | TsInternalValueRepresentation[]
-  | [];
-
-export type TsAtomicInternalValueRepresentation =
-  | PlType
+export type AtomicInternalValueRepresentation =
   | boolean
   | number
   | string
@@ -48,7 +34,7 @@ export type TsAtomicInternalValueRepresentation =
 
 export type InternalValueRepresentationTypeguard<
   T extends InternalValueRepresentation,
-> = (value: InternalValueRepresentation) => value is T;
+> = (value: unknown) => value is T;
 
 export function internalValueToString(
   valueRepresentation: InternalValueRepresentation,

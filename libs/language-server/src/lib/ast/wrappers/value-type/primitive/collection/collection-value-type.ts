@@ -5,8 +5,8 @@
 import { type DataType as PlDType } from 'nodejs-polars';
 
 import {
+  type AtomicInternalValueRepresentation,
   type InternalValueRepresentation,
-  type TsAtomicInternalValueRepresentation,
 } from '../../../../expressions/internal-value-representation';
 import { type ValueType, type ValueTypeVisitor } from '../../value-type';
 
@@ -54,7 +54,7 @@ export class CollectionValueType<
 }
 
 export function isCollectionValueType<
-  I extends TsAtomicInternalValueRepresentation,
+  I extends AtomicInternalValueRepresentation,
 >(v: unknown, elementType: ValueType<I>): v is CollectionValueType<I> {
   return v instanceof CollectionValueType && v.elementType.equals(elementType);
 }

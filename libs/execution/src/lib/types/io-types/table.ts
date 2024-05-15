@@ -6,13 +6,14 @@
 import { strict as assert } from 'assert';
 
 import {
+  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   IOType,
+  everyValueInternalRepresentationTypeguard,
   type InternalValueRepresentation,
-  type PolarsAtomicInternalValueRepresentation,
-  type TsInternalValueRepresentation,
   type ValueType,
+  INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD,
 } from '@jvalue/jayvee-language-server';
-import { DataType, pl } from 'nodejs-polars';
+import { pl } from 'nodejs-polars';
 
 import {
   SQLColumnTypeVisitor,
@@ -25,7 +26,7 @@ import {
 } from './io-type-implementation';
 
 export abstract class TableColumn {
-  abstract getValueType(): ValueType<InternalValueRepresentation>;
+  abstract getValueType(): ValueType;
   abstract getName(): string;
   abstract nth(n: number): InternalValueRepresentation | undefined;
 
@@ -38,7 +39,7 @@ export class PolarsTableColumn extends TableColumn {
     super();
   }
 
-  override getValueType(): ValueType<PolarsAtomicInternalValueRepresentation> {
+  override getValueType(): ValueType {
     throw new Error('getValueType() not implemented');
   }
 
@@ -46,12 +47,13 @@ export class PolarsTableColumn extends TableColumn {
     return this.series.name;
   }
 
-  override nth(n: number): PolarsAtomicInternalValueRepresentation | undefined {
-    const e = this.series.getIndex(n) as unknown;
-    if (e instanceof DataType) {
-      return e;
+  override nth(n: number): InternalValueRepresentation | undefined {
+    const nth = this.series.getIndex(n) as unknown;
+    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(nth)) {
+      return nth;
+    } else {
+      throw new Error('Expected InternalRepresentation');
     }
-    return undefined;
   }
 
   override isPolars(): this is PolarsTableColumn {
@@ -68,7 +70,7 @@ export class PolarsTableColumn extends TableColumn {
 }
 
 export class TsTableColumn<
-  T extends TsInternalValueRepresentation = TsInternalValueRepresentation,
+  T extends InternalValueRepresentation = InternalValueRepresentation,
 > extends TableColumn {
   constructor(
     public name: string,
@@ -99,7 +101,7 @@ export class TsTableColumn<
   }
 }
 
-export type TsTableRow = Record<string, TsInternalValueRepresentation>;
+export type TsTableRow = Record<string, InternalValueRepresentation>;
 
 /**
  * Invariant: the shape of the table is always a rectangle.
@@ -220,13 +222,12 @@ export class PolarsTable extends Table {
     }
   }
 
-  override getRow(id: number): PolarsAtomicInternalValueRepresentation[] {
-    return this.df.row(id).map((cell) => {
-      if (cell instanceof DataType) {
-        return cell;
-      }
-      throw new Error('Expected a pola-rs datatype');
-    });
+  override getRow(id: number): InternalValueRepresentation[] {
+    const row = this.df.row(id);
+    if (INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD(row)) {
+      return row;
+    }
+    throw new Error('Expected InternalRepresentation');
   }
 
   override clone(): PolarsTable {

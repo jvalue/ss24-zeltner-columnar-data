@@ -12,17 +12,11 @@ import {
   type TransformPortDefinition,
   type ValueType,
   evaluateExpression,
-  TsInternalValueRepresentation,
 } from '@jvalue/jayvee-language-server';
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
-import {
-  type Table,
-  type TableColumn,
-  type TsTable,
-  TsTableColumn,
-} from '../types/io-types/table';
+import { type TableColumn, TsTableColumn } from '../types/io-types/table';
 
 export interface PortDetails {
   port: TransformPortDefinition;

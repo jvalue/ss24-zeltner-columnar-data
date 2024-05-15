@@ -11,16 +11,10 @@ import {
   type BlockExecutorClass,
   type ExecutionContext,
   type PortDetails,
-  type Table,
   TsTransformExecutor,
   implementsStatic,
 } from '@jvalue/jayvee-execution';
-import {
-  IOType,
-  TsInternalValueRepresentation,
-  type InternalValueRepresentation,
-} from '@jvalue/jayvee-language-server';
-import { pl } from 'nodejs-polars';
+import { IOType } from '@jvalue/jayvee-language-server';
 
 export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
   IOType.TABLE,
