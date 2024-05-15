@@ -24,9 +24,10 @@ import {
   type InternalValueRepresentation,
   type ValueType,
   type ValuetypeAssignment,
+  isPrimitiveValueType,
   rowIndexToString,
 } from '@jvalue/jayvee-language-server';
-import pl from 'nodejs-polars';
+import pl, { type DataType as PlDType } from 'nodejs-polars';
 
 export interface ColumnDefinitionEntry {
   sheetColumnIndex: number;
@@ -175,6 +176,22 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
     columnEntries: ColumnDefinitionEntry[],
     context: ExecutionContext,
   ): Table;
+
+  protected parseAndValidateValue(
+    value: string,
+    valueType: ValueType,
+    context: ExecutionContext,
+  ): InternalValueRepresentation | undefined {
+    const parsedValue = parseValueToInternalRepresentation(value, valueType);
+    if (parsedValue === undefined) {
+      return undefined;
+    }
+
+    if (!isValidValueRepresentation(parsedValue, valueType, context)) {
+      return undefined;
+    }
+    return parsedValue;
+  }
 }
 
 @implementsStatic<BlockExecutorClass>()
@@ -183,16 +200,52 @@ export class PolarsTableInterpreterExecutor extends TableInterpeter {
 
   protected override constructAndValidateTable(
     sheet: Sheet,
-    _header: boolean,
+    header: boolean,
     columnEntries: ColumnDefinitionEntry[],
-    _context: ExecutionContext,
+    context: ExecutionContext,
   ): PolarsTable {
-    const schema: { [key: string]: string } = {};
-    columnEntries.forEach((e) => {
-      schema[e.columnName] = e.valueType.getName();
-    });
-    const df = pl.DataFrame(sheet.getData(), { orient: 'row', schema: schema });
+    const rows = header ? sheet.getData().slice(1) : sheet.getData();
+    const series = columnEntries.map((cEntry) =>
+      this.constructSeries(rows, cEntry, context),
+    );
+    const df = pl.DataFrame(series);
     return new PolarsTable(df);
+  }
+
+  // TODO: Decide if this is the right place for this function
+  private toPlDType(vt: ValueType, logger: R.Logger): PlDType | undefined {
+    if (isPrimitiveValueType(vt)) {
+      const dt = vt.asPolarsDType();
+      if (dt === undefined) {
+        logger.logErr(`${vt.getName()} to polars is not yet implemented`);
+        return undefined;
+      }
+      return dt;
+    }
+    logger.logDebug(
+      `${vt.getName()} isnt primitive and thus not convertible to polars`,
+    );
+    return undefined;
+  }
+
+  private constructSeries(
+    rows: readonly (readonly string[])[],
+    columnEntry: ColumnDefinitionEntry,
+    context: ExecutionContext,
+  ): pl.Series {
+    const dtype =
+      this.toPlDType(columnEntry.valueType, context.logger) || pl.String;
+    const cData = rows.map((row) => {
+      const cell = row[columnEntry.sheetColumnIndex];
+      if (cell === undefined) {
+        throw new Error('columnEntries had more elements than the sheet data');
+      }
+      const vt = dtype.equals(pl.String)
+        ? context.valueTypeProvider.Primitives.Text
+        : columnEntry.valueType;
+      return this.parseAndValidateValue(cell, vt, context);
+    });
+    return pl.Series(columnEntry.columnName, cData, dtype);
   }
 }
 
@@ -272,21 +325,5 @@ export class TsTableInterpreterExecutor extends TableInterpeter {
 
     assert(Object.keys(tableRow).length === columnEntries.length);
     return tableRow;
-  }
-
-  private parseAndValidateValue(
-    value: string,
-    valueType: ValueType,
-    context: ExecutionContext,
-  ): InternalValueRepresentation | undefined {
-    const parsedValue = parseValueToInternalRepresentation(value, valueType);
-    if (parsedValue === undefined) {
-      return undefined;
-    }
-
-    if (!isValidValueRepresentation(parsedValue, valueType, context)) {
-      return undefined;
-    }
-    return parsedValue;
   }
 }

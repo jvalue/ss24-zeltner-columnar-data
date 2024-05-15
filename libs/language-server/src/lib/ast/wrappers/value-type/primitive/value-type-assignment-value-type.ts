@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType as PlDType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import {
   type ValuetypeAssignment as AstValuetypeAssignment,
@@ -28,5 +30,9 @@ export class ValuetypeAssignmentValuetype extends PrimitiveValueType<AstValuetyp
     operandValue: InternalValueRepresentation | undefined,
   ): operandValue is AstValuetypeAssignment {
     return isAstValuetypeAssignment(operandValue);
+  }
+
+  override asPolarsDType(): PlDType | undefined {
+    return undefined;
   }
 }

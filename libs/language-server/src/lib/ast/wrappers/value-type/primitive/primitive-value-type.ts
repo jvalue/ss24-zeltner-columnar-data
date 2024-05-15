@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType as PlDType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import { AbstractValueType } from '../abstract-value-type';
 import { type ValueType } from '../value-type';
@@ -38,6 +40,8 @@ export abstract class PrimitiveValueType<
   fromString(_s: string): I | undefined {
     return undefined;
   }
+
+  abstract asPolarsDType(): PlDType | undefined;
 }
 
 export function isPrimitiveValueType(v: unknown): v is PrimitiveValueType {

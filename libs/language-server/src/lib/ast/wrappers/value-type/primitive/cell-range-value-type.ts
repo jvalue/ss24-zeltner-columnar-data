@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType as PlDType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import {
   type CellRangeLiteral,
@@ -28,5 +30,9 @@ export class CellRangeValuetype extends PrimitiveValueType<CellRangeLiteral> {
     operandValue: InternalValueRepresentation | undefined,
   ): operandValue is CellRangeLiteral {
     return isCellRangeLiteral(operandValue);
+  }
+
+  override asPolarsDType(): PlDType | undefined {
+    return undefined;
   }
 }

@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType as PlDType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import { type ValueTypeVisitor } from '../value-type';
 
@@ -24,5 +26,9 @@ export class RegexValuetype extends PrimitiveValueType<RegExp> {
     operandValue: InternalValueRepresentation | undefined,
   ): operandValue is RegExp {
     return operandValue instanceof RegExp;
+  }
+
+  override asPolarsDType(): PlDType | undefined {
+    return undefined;
   }
 }

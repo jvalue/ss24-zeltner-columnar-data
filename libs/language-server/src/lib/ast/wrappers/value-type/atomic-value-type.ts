@@ -19,6 +19,7 @@ import { AbstractValueType } from './abstract-value-type';
 import { type ValueTypeProvider } from './primitive';
 import { CollectionValueType } from './primitive/collection/collection-value-type';
 import { type ValueType, type ValueTypeVisitor } from './value-type';
+import { DataType } from 'nodejs-polars';
 
 export class AtomicValueType
   extends AbstractValueType<InternalValueRepresentation>

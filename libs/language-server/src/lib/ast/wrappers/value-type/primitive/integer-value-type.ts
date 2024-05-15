@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { DataType as PlDType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import { type ValueType, type ValueTypeVisitor } from '../value-type';
 
@@ -41,7 +43,6 @@ An integer value.
 Example: 3
 `.trim();
   }
-
   override fromString(s: string): number | undefined {
     /**
      * Reuse decimal number parsing to capture valid scientific notation
@@ -61,5 +62,9 @@ Example: 3
     }
 
     return integerNumber;
+  }
+
+  override asPolarsDType(): PlDType | undefined {
+    return PlDType.Int64;
   }
 }

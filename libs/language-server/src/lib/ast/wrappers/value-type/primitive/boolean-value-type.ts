@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { DataType as PlDType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import { type ValueTypeVisitor } from '../value-type';
 
@@ -47,5 +49,9 @@ Examples: true, false
       return false;
     }
     return undefined;
+  }
+
+  override asPolarsDType(): PlDType | undefined {
+    return PlDType.Bool;
   }
 }

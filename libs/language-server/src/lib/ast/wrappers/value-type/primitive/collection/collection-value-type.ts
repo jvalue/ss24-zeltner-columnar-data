@@ -2,9 +2,11 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType as PlDType } from 'nodejs-polars';
+
 import {
-  type TsAtomicInternalValueRepresentation,
   type InternalValueRepresentation,
+  type TsAtomicInternalValueRepresentation,
 } from '../../../../expressions/internal-value-representation';
 import { type ValueType, type ValueTypeVisitor } from '../../value-type';
 
@@ -44,6 +46,10 @@ export class CollectionValueType<
         this.elementType.isInternalValueRepresentation(element),
       )
     );
+  }
+
+  override asPolarsDType(): PlDType | undefined {
+    return undefined;
   }
 }
 

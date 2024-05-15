@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../../../expressions/internal-value-representation';
 import { type ValueType, type ValueTypeVisitor } from '../../value-type';
 
@@ -27,5 +29,9 @@ export class EmptyCollectionValueType extends AbstractCollectionValueType<undefi
     operandValue: InternalValueRepresentation | undefined,
   ): operandValue is [] {
     return Array.isArray(operandValue) && operandValue.length === 0;
+  }
+
+  override asPolarsDType(): DataType | undefined {
+    return undefined;
   }
 }
