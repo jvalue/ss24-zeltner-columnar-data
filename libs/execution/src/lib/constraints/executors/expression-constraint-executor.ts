@@ -13,6 +13,7 @@ import {
 
 import { type ExecutionContext } from '../../execution-context';
 import { type ConstraintExecutor } from '../constraint-executor';
+import { Bool } from 'nodejs-polars';
 
 export class ExpressionConstraintExecutor
   implements ConstraintExecutor, AstNodeWrapper<ExpressionConstraintDefinition>
@@ -37,6 +38,8 @@ export class ExpressionConstraintExecutor
         result,
       ),
     );
+
+    let x = result;
 
     context.evaluationContext.deleteValueForValueKeyword();
 

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { type InternalValueRepresentation } from '@jvalue/jayvee-language-server';
+import { type String as PolarsString } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../../execution-context';
 import { implementsStatic } from '../../util/implements-static-decorator';
@@ -23,10 +24,11 @@ export class AllowlistConstraintExecutor implements ConstraintExecutor {
 
     const allowlist = context.getPropertyValue(
       'allowlist',
-      context.valueTypeProvider.createCollectionValueTypeOf(
-        context.valueTypeProvider.Primitives.Text,
-      ),
+      context.valueTypeProvider.createCollectionValueTypeOf<
+        string | PolarsString
+      >(context.valueTypeProvider.Primitives.Text),
     );
-    return allowlist.includes(value);
+
+    return allowlist.map((s) => s.toString()).includes(value);
   }
 }

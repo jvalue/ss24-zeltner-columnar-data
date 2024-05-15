@@ -22,10 +22,7 @@ import {
 import { type ValueTypeProvider } from '../wrappers';
 import { type ValueType } from '../wrappers/value-type/value-type';
 
-import {
-  type InternalValueRepresentation,
-  type TsInternalValueRepresentation,
-} from './internal-value-representation';
+import { type InternalValueRepresentation } from './internal-value-representation';
 import { type OperatorEvaluatorRegistry } from './operator-registry';
 
 export class EvaluationContext {
@@ -33,7 +30,7 @@ export class EvaluationContext {
     string,
     InternalValueRepresentation
   >();
-  private valueKeywordValue: TsInternalValueRepresentation | undefined =
+  private valueKeywordValue: InternalValueRepresentation | undefined =
     undefined;
 
   constructor(
@@ -99,7 +96,7 @@ export class EvaluationContext {
     return this.runtimeParameterProvider.getParsedValue(key, valueType);
   }
 
-  setValueForValueKeyword(value: TsInternalValueRepresentation) {
+  setValueForValueKeyword(value: InternalValueRepresentation) {
     this.valueKeywordValue = value;
   }
 
@@ -110,7 +107,7 @@ export class EvaluationContext {
   getValueForValueKeyword(
     literal: ValueKeywordLiteral,
     valueTypeProvider: ValueTypeProvider,
-  ): TsInternalValueRepresentation | undefined {
+  ): InternalValueRepresentation | undefined {
     if (this.valueKeywordValue === undefined) {
       return undefined;
     }
