@@ -17,6 +17,7 @@ import {
   getInputType,
   getOutputType,
 } from './blocks/composite-block-executor';
+import { type Logger } from './logging';
 
 export abstract class JayveeExecExtension {
   abstract getBlockExecutors(): BlockExecutorClass[];
@@ -24,12 +25,15 @@ export abstract class JayveeExecExtension {
   getExecutorForBlockType(
     blockTypeName: string,
     usePolars: boolean,
+    logger: Logger,
   ): BlockExecutorClass | undefined {
     if (blockTypeName === 'TableInterpreter') {
       blockTypeName = usePolars
         ? 'PolarsTableInterpreter'
         : 'TsTableInterpreter';
     }
+    logger.logDebug(`Trying to find executor for ${blockTypeName}`);
+
     return this.getBlockExecutors().find(
       (x: BlockExecutorClass) => x.type === blockTypeName,
     );
@@ -38,11 +42,16 @@ export abstract class JayveeExecExtension {
   createBlockExecutor(
     block: BlockDefinition,
     usePolars: boolean,
+    logger: Logger,
   ): BlockExecutor {
     const blockType = block.type.ref;
     assert(blockType !== undefined);
 
-    let blockExecutor = this.getExecutorForBlockType(blockType.name, usePolars);
+    let blockExecutor = this.getExecutorForBlockType(
+      blockType.name,
+      usePolars,
+      logger,
+    );
 
     if (
       blockExecutor === undefined &&

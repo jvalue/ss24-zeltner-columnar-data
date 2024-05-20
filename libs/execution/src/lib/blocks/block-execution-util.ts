@@ -95,6 +95,7 @@ export async function executeBlock(
   const blockExecutor = executionContext.executionExtension.createBlockExecutor(
     block,
     executionContext.runOptions.usePolars,
+    executionContext.logger,
   );
 
   const startTime = new Date();

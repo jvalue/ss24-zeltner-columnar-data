@@ -188,7 +188,7 @@ export class TsTransformExecutor extends TransformExecutor<
       assert(column !== undefined);
 
       const variableValue = column.nth(rowIndex);
-      assert(variableValue !== undefined);
+      assert(variableValue != null);
 
       context.evaluationContext.setValueForReference(
         variableName,

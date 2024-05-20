@@ -13,6 +13,7 @@ import {
   PolarsTable,
   type Sheet,
   type Table,
+  type TableRowMap,
   TsTable,
   implementsStatic,
   isValidValueRepresentation,
@@ -297,9 +298,9 @@ export class TsTableInterpreterExecutor extends TableInterpeter {
     sheetRowIndex: number,
     columnEntries: ColumnDefinitionEntry[],
     context: ExecutionContext,
-  ): R.TsTableRow | undefined {
+  ): TableRowMap | undefined {
     let invalidRow = false;
-    const tableRow: R.TsTableRow = {};
+    const tableRow: TableRowMap = {};
     columnEntries.forEach((columnEntry) => {
       const sheetColumnIndex = columnEntry.sheetColumnIndex;
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

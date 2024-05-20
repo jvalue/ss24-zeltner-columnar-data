@@ -22,6 +22,7 @@ import {
   TsTableTransformerExecutor,
 } from './lib/table-transformer-executor';
 import { XLSXInterpreterExecutor } from './lib/xlsx-interpreter-executor';
+import { FileToTableInterpreterExecutor } from './lib/file-to-table-interpreter-executor';
 
 export class TabularExecExtension extends JayveeExecExtension {
   getBlockExecutors(): BlockExecutorClass[] {
@@ -37,6 +38,7 @@ export class TabularExecExtension extends JayveeExecExtension {
       TsTableTransformerExecutor,
       XLSXInterpreterExecutor,
       SheetPickerExecutor,
+      FileToTableInterpreterExecutor,
     ];
   }
 }

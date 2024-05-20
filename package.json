@@ -11,6 +11,7 @@
     "generate": "nx run language-server:generate",
     "example:cars": "nx run interpreter:run -d example/cars.jv -dg peek",
     "example:cars-polars": "nx run interpreter:run -d example/cars.jv -dg peek --use-polars",
+    "example:one-block-polars": "nx run interpreter:run -d example/one-block.jv -dg peek --use-polars",
     "example:gtfs": "nx run interpreter:run -d example/gtfs-static.jv -dg peek",
     "example:gtfs-rt": "nx run interpreter:run -d example/gtfs-rt.jv -dg peek",
     "example:workbooks": "nx run interpreter:run -d example/workbooks-xlsx.jv -dg peek",
