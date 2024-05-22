@@ -11,6 +11,7 @@ import { CellRangeSelectorExecutor } from './lib/cell-range-selector-executor';
 import { CellWriterExecutor } from './lib/cell-writer-executor';
 import { ColumnDeleterExecutor } from './lib/column-deleter-executor';
 import { CSVInterpreterExecutor } from './lib/csv-interpreter-executor';
+import { FileToTableInterpreterExecutor } from './lib/file-to-table-interpreter-executor';
 import { RowDeleterExecutor } from './lib/row-deleter-executor';
 import { SheetPickerExecutor } from './lib/sheet-picker-executor';
 import {
@@ -22,7 +23,6 @@ import {
   TsTableTransformerExecutor,
 } from './lib/table-transformer-executor';
 import { XLSXInterpreterExecutor } from './lib/xlsx-interpreter-executor';
-import { FileToTableInterpreterExecutor } from './lib/file-to-table-interpreter-executor';
 
 export class TabularExecExtension extends JayveeExecExtension {
   getBlockExecutors(): BlockExecutorClass[] {

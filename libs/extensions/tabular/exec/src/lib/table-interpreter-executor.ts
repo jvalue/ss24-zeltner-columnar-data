@@ -266,7 +266,7 @@ export class TsTableInterpreterExecutor extends TableInterpeter {
     columnEntries.forEach((columnEntry) => {
       table.addColumn(
         columnEntry.columnName,
-        new R.TsTableColumn(columnEntry.columnName, [], columnEntry.valueType),
+        new R.TsTableColumn(columnEntry.columnName, columnEntry.valueType),
       );
     });
 

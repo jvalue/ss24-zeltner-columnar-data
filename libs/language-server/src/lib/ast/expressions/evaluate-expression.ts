@@ -5,7 +5,9 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
+import * as fp from 'fp-ts';
 import { assertUnreachable } from 'langium';
+import { pl } from 'nodejs-polars';
 
 import { type ValidationContext } from '../../validation';
 import {
@@ -30,7 +32,10 @@ import { type ValueType, type WrapperFactoryProvider } from '../wrappers';
 import { type EvaluationContext } from './evaluation-context';
 import { EvaluationStrategy } from './evaluation-strategy';
 import { type InternalValueRepresentation } from './internal-value-representation';
-import { isEveryValueDefined } from './typeguards';
+import {
+  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
+  isEveryValueDefined,
+} from './typeguards';
 
 export function evaluatePropertyValue<T extends InternalValueRepresentation>(
   property: PropertyAssignment,
@@ -81,6 +86,58 @@ export function evaluatePropertyValue<T extends InternalValueRepresentation>(
   return result;
 }
 
+export function extendPolarsExpression(
+  expression: Expression | undefined,
+  evaluationContext: EvaluationContext,
+  wrapperFactories: WrapperFactoryProvider,
+  colLen: number,
+  context: ValidationContext | undefined = undefined,
+  strategy: EvaluationStrategy = EvaluationStrategy.LAZY,
+): fp.either.Either<pl.Expr, pl.Series> | undefined {
+  if (expression === undefined) {
+    return undefined;
+  }
+  if (isExpressionLiteral(expression)) {
+    if (isFreeVariableLiteral(expression)) {
+      const fv = evaluationContext.getValueFor(expression);
+      if (fv === undefined) {
+        return undefined;
+      }
+      if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(fv)) {
+        return fp.either.right(pl.repeat(fv, colLen));
+      }
+      return fp.either.left(fv);
+    } else if (isValueLiteral(expression)) {
+      const lit = evaluateValueLiteral(
+        expression,
+        evaluationContext,
+        wrapperFactories,
+        context,
+        strategy,
+      );
+      return fp.either.right(pl.repeat(lit, colLen));
+    }
+    assertUnreachable(expression);
+  }
+  if (isUnaryExpression(expression)) {
+    const operator = expression.operator;
+    const evaluator = evaluationContext.operatorRegistry.unary[operator];
+    throw new Error('Unary expressions are not supported yet');
+  }
+  if (isBinaryExpression(expression)) {
+    const operator = expression.operator;
+    const evaluator = evaluationContext.operatorRegistry.binary[operator];
+    throw new Error('Unary expressions are not supported yet');
+  }
+  if (isTernaryExpression(expression)) {
+    const operator = expression.operator;
+    const evaluator = evaluationContext.operatorRegistry.ternary[operator];
+
+    throw new Error('Unary expressions are not supported yet');
+  }
+  assertUnreachable(expression);
+}
+
 export function evaluateExpression(
   expression: Expression | undefined,
   evaluationContext: EvaluationContext,
@@ -93,7 +150,9 @@ export function evaluateExpression(
   }
   if (isExpressionLiteral(expression)) {
     if (isFreeVariableLiteral(expression)) {
-      return evaluationContext.getValueFor(expression);
+      const fv = evaluationContext.getValueFor(expression);
+      assert(fv === undefined || INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(fv));
+      return fv;
     } else if (isValueLiteral(expression)) {
       return evaluateValueLiteral(
         expression,

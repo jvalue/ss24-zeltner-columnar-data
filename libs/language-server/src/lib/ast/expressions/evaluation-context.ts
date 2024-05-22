@@ -6,6 +6,7 @@
 import { strict as assert } from 'assert';
 
 import { assertUnreachable } from 'langium';
+import { type pl } from 'nodejs-polars';
 
 import { type RuntimeParameterProvider } from '../../services';
 import {} from '../../validation/validation-context';
@@ -29,7 +30,7 @@ import { type OperatorEvaluatorRegistry } from './operator-registry';
 export class EvaluationContext {
   private readonly variableValues = new Map<
     string,
-    InternalValueRepresentation
+    InternalValueRepresentation | pl.Expr
   >();
   private valueKeywordValue: InternalValueRepresentation | undefined =
     undefined;
@@ -42,7 +43,7 @@ export class EvaluationContext {
 
   getValueFor(
     literal: FreeVariableLiteral,
-  ): InternalValueRepresentation | undefined {
+  ): InternalValueRepresentation | pl.Expr | undefined {
     if (isReferenceLiteral(literal)) {
       return this.getValueForReference(literal);
     } else if (isValueKeywordLiteral(literal)) {
@@ -53,7 +54,7 @@ export class EvaluationContext {
 
   setValueForReference(
     refText: string,
-    value: InternalValueRepresentation,
+    value: InternalValueRepresentation | pl.Expr,
   ): void {
     this.variableValues.set(refText, value);
   }
@@ -64,7 +65,7 @@ export class EvaluationContext {
 
   getValueForReference(
     referenceLiteral: ReferenceLiteral,
-  ): InternalValueRepresentation | undefined {
+  ): InternalValueRepresentation | pl.Expr | undefined {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const dereferenced = referenceLiteral?.value?.ref;
     if (dereferenced === undefined) {

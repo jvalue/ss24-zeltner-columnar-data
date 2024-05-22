@@ -15,25 +15,53 @@ import {
   implementsStatic,
 } from '@jvalue/jayvee-execution';
 import { IOType } from '@jvalue/jayvee-language-server';
+import { either } from 'fp-ts';
+import { type pl } from 'nodejs-polars';
 
 export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
   IOType.TABLE,
   IOType.TABLE
 > {
-  public static readonly type = 'TableTransformer';
-
   constructor() {
     super(IOType.TABLE, IOType.TABLE);
+  }
+
+  protected logColumnOverwriteStatus(
+    inputTable: R.Table,
+    outputColumnName: string,
+    context: R.ExecutionContext,
+    transformOutputDetails: PortDetails,
+  ) {
+    const outputColumn = inputTable.getColumn(outputColumnName);
+    if (outputColumn !== undefined) {
+      context.logger.logInfo(
+        `Column "${outputColumnName}" will be overwritten`,
+      );
+
+      // log if output column type changes
+      if (
+        !outputColumn
+          .getValueType(context.valueTypeProvider)
+          .equals(transformOutputDetails.valueType)
+      ) {
+        context.logger.logInfo(
+          `Column "${outputColumnName}" will change its type from ${outputColumn
+            .getValueType(context.valueTypeProvider)
+            .getName()} to ${transformOutputDetails.valueType.getName()}`,
+        );
+      }
+    }
   }
 }
 
 @implementsStatic<BlockExecutorClass>()
 export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
+  public static readonly type = 'PolarsTableTransformer';
   // eslint-disable-next-line @typescript-eslint/require-await
   override async doExecute(
     inputTable: R.PolarsTable,
     context: R.ExecutionContext,
-  ): Promise<R.Result<R.IOTypeImplementation<IOType.TABLE> | null>> {
+  ): Promise<R.Result<R.PolarsTable>> {
     const inputColumnNames = context.getPropertyValue(
       'inputColumns',
       context.valueTypeProvider.createCollectionValueTypeOf(
@@ -49,22 +77,45 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       context.valueTypeProvider.Primitives.Transform,
     );
 
-    // inputTable.df.withColumn(pl.col(inputColumnNames).alias(outputColumnName));
+    const executor = new R.PolarsTransformExecutor(usedTransform, context);
+    const eith = executor.executeTransform(
+      inputColumnNames,
+      context,
+      inputTable.getNumberOfRows(),
+    );
 
-    throw new Error('Cannot transform PolarsTables yet :(');
+    this.logColumnOverwriteStatus(
+      inputTable,
+      outputColumnName,
+      context,
+      executor.getOutputDetails(),
+    );
+
+    if (eith === undefined) {
+      return R.err({
+        message: 'Skipping transform: Could not evaluate transform expression',
+        diagnostic: {
+          node: context.getCurrentNode(),
+        },
+      });
+    }
+
+    let ncol: pl.Expr | pl.Series | undefined = undefined;
+    if (either.isRight(eith)) {
+      ncol = eith.right.rename(outputColumnName);
+    } else if (either.isLeft(eith)) {
+      ncol = eith.left.alias(outputColumnName);
+    }
+    assert(ncol !== undefined);
+
+    const ndf = inputTable.df.withColumn(ncol);
+    return R.ok(new R.PolarsTable(ndf));
   }
 }
 
 @implementsStatic<BlockExecutorClass>()
-export class TsTableTransformerExecutor extends AbstractBlockExecutor<
-  IOType.TABLE,
-  IOType.TABLE
-> {
-  public static readonly type = 'TableTransformer';
-
-  constructor() {
-    super(IOType.TABLE, IOType.TABLE);
-  }
+export class TsTableTransformerExecutor extends TableTransformerExecutor {
+  public static readonly type = 'TsTableTransformer';
 
   // eslint-disable-next-line @typescript-eslint/require-await
   override async doExecute(
@@ -109,7 +160,7 @@ export class TsTableTransformerExecutor extends AbstractBlockExecutor<
     if (R.isErr(checkInputColumnsMatchTransformInputTypesResult)) {
       return checkInputColumnsMatchTransformInputTypesResult;
     }
-    const variableToColumnMap = R.okData(
+    const variableToColumnMap: Map<string, R.TsTableColumn> = R.okData(
       checkInputColumnsMatchTransformInputTypesResult,
     );
 
@@ -126,7 +177,12 @@ export class TsTableTransformerExecutor extends AbstractBlockExecutor<
         numberOfRows: inputTable.getNumberOfRows(),
       },
       context,
+      inputTable.getNumberOfRows(),
     );
+
+    if (transformResult === undefined) {
+      return R.ok(inputTable);
+    }
 
     const outputTable = this.createOutputTable(
       inputTable,
@@ -135,6 +191,20 @@ export class TsTableTransformerExecutor extends AbstractBlockExecutor<
     );
 
     return R.ok(outputTable);
+  }
+
+  private createOutputTable(
+    inputTable: R.TsTable,
+    transformResult: {
+      resultingColumn: R.TsTableColumn;
+      rowsToDelete: number[];
+    },
+    outputColumnName: string,
+  ) {
+    const outputTable = inputTable.clone();
+    outputTable.dropRows(transformResult.rowsToDelete);
+    outputTable.addColumn(outputColumnName, transformResult.resultingColumn);
+    return outputTable;
   }
 
   checkInputColumnsMatchTransformInputTypes(
@@ -195,46 +265,5 @@ export class TsTableTransformerExecutor extends AbstractBlockExecutor<
       ++i;
     }
     return R.ok(undefined);
-  }
-
-  private createOutputTable(
-    inputTable: R.TsTable,
-    transformResult: {
-      resultingColumn: R.TsTableColumn;
-      rowsToDelete: number[];
-    },
-    outputColumnName: string,
-  ) {
-    const outputTable = inputTable.clone();
-    outputTable.dropRows(transformResult.rowsToDelete);
-    outputTable.addColumn(outputColumnName, transformResult.resultingColumn);
-    return outputTable;
-  }
-
-  private logColumnOverwriteStatus(
-    inputTable: R.Table,
-    outputColumnName: string,
-    context: R.ExecutionContext,
-    transformOutputDetails: PortDetails,
-  ) {
-    const outputColumn = inputTable.getColumn(outputColumnName);
-    if (outputColumn !== undefined) {
-      context.logger.logInfo(
-        `Column "${outputColumnName}" will be overwritten`,
-      );
-
-      // log if output column type changes
-      if (
-        !outputColumn
-          .getValueType(context.valueTypeProvider)
-          .equals(transformOutputDetails.valueType)
-      ) {
-        context.logger.logInfo(
-          `Column "${outputColumnName}" will change its type from ${outputColumn
-            .getValueType(context.valueTypeProvider)
-            .getName()} to ${transformOutputDetails.valueType.getName()}`,
-        );
-      }
-    }
   }
 }

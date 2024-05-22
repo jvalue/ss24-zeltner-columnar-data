@@ -32,6 +32,11 @@ export abstract class JayveeExecExtension {
         ? 'PolarsTableInterpreter'
         : 'TsTableInterpreter';
     }
+    if (blockTypeName === 'TableTransformer') {
+      blockTypeName = usePolars
+        ? 'PolarsTableTransformer'
+        : 'TsTableTransformer';
+    }
     logger.logDebug(`Trying to find executor for ${blockTypeName}`);
 
     return this.getBlockExecutors().find(

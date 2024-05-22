@@ -81,8 +81,8 @@ export class TsTableColumn<
 > extends TableColumn {
   constructor(
     public name: string,
-    public values: T[],
     public valueType: ValueType<T>,
+    public values: T[] = [],
   ) {
     super();
   }
@@ -105,6 +105,12 @@ export class TsTableColumn<
 
   override isTypescript(): this is TsTableColumn<T> {
     return true;
+  }
+
+  push(x: T) {
+    if (this.valueType.isInternalValueRepresentation(x)) {
+      this.values.push(x);
+    }
   }
 }
 
@@ -215,12 +221,20 @@ export class PolarsTable extends Table {
 
     return new PolarsTable(ndf);
   }
+
+  withColumnByExpr(expr: pl.Expr): PolarsTable {
+    const ndf = this.df.withColumn(expr);
+    return new PolarsTable(ndf);
+  }
+
   override getNumberOfRows(): number {
     return this.df.height;
   }
+
   override getNumberOfColumns(): number {
     return this.df.width;
   }
+
   override hasColumn(name: string): boolean {
     try {
       this.df.getColumn(name);

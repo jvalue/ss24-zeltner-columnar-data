@@ -6,13 +6,18 @@
 import { strict as assert } from 'assert';
 
 import {
+  type EvaluationContext,
   type InternalValueRepresentation,
   type TransformDefinition,
   type TransformOutputAssignment,
   type TransformPortDefinition,
   type ValueType,
   evaluateExpression,
+  extendPolarsExpression,
 } from '@jvalue/jayvee-language-server';
+import { type either } from 'fp-ts';
+import { zipWith } from 'fp-ts/lib/ReadonlyArray.js';
+import { pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
@@ -40,7 +45,7 @@ export abstract class TransformExecutor<I, O> {
     return portDetails[0]!;
   }
 
-  private getPortDetails(kind: TransformPortDefinition['kind']): {
+  protected getPortDetails(kind: TransformPortDefinition['kind']): {
     port: TransformPortDefinition;
     valueType: ValueType;
   }[] {
@@ -66,16 +71,76 @@ export abstract class TransformExecutor<I, O> {
     return outputAssignments[0]!;
   }
 
-  executeTransform(input: I, context: ExecutionContext): O {
+  executeTransform(
+    input: I,
+    context: ExecutionContext,
+    n_rows: number,
+  ): O | undefined {
     context.enterNode(this.transform);
 
-    const result = this.doExecuteTransform(input, context);
+    const result = this.doExecuteTransform(input, context, n_rows);
     context.exitNode(this.transform);
 
     return result;
   }
 
-  protected abstract doExecuteTransform(input: I, context: ExecutionContext): O;
+  protected abstract doExecuteTransform(
+    input: I,
+    context: ExecutionContext,
+    colLen: number,
+  ): O | undefined;
+}
+
+export class PolarsTransformExecutor extends TransformExecutor<
+  string[],
+  either.Either<pl.Expr, pl.Series>
+> {
+  private static addInputColumnsToContext(
+    inputDetailsList: readonly PortDetails[],
+    columns: string[],
+    evaluationContext: EvaluationContext,
+  ) {
+    zipWith(inputDetailsList, columns, (portDetails, colName) => {
+      evaluationContext.setValueForReference(
+        portDetails.port.name,
+        pl.col(colName),
+      );
+    });
+  }
+
+  protected override doExecuteTransform(
+    inputColumns: string[],
+    context: ExecutionContext,
+    n_rows: number,
+  ): either.Either<pl.Expr, pl.Series> | undefined {
+    const inputDetails = this.getInputDetails();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const outputDetail = this.getOutputDetails();
+
+    PolarsTransformExecutor.addInputColumnsToContext(
+      inputDetails,
+      inputColumns,
+      context.evaluationContext,
+    );
+
+    let eith: either.Either<pl.Expr, pl.Series> | undefined = undefined;
+    try {
+      eith = extendPolarsExpression(
+        this.getOutputAssignment().expression,
+        context.evaluationContext,
+        context.wrapperFactories,
+        n_rows,
+      );
+    } catch (e) {
+      if (e instanceof Error) {
+        context.logger.logDebug(e.message);
+      } else {
+        context.logger.logDebug(String(e));
+      }
+    }
+
+    return eith;
+  }
 }
 
 export class TsTransformExecutor extends TransformExecutor<
@@ -101,7 +166,10 @@ export class TsTransformExecutor extends TransformExecutor<
     const inputDetailsList = this.getInputDetails();
     const outputDetails = this.getOutputDetails();
 
-    const newColumn: InternalValueRepresentation[] = [];
+    const newColumn = new TsTableColumn(
+      outputDetails.port.name,
+      outputDetails.valueType,
+    );
     const rowsToDelete: number[] = [];
 
     for (let rowIndex = 0; rowIndex < input.numberOfRows; ++rowIndex) {
@@ -157,11 +225,7 @@ export class TsTransformExecutor extends TransformExecutor<
 
     return {
       rowsToDelete: rowsToDelete,
-      resultingColumn: new TsTableColumn(
-        'LEAK',
-        newColumn,
-        outputDetails.valueType,
-      ),
+      resultingColumn: newColumn,
     };
   }
 
