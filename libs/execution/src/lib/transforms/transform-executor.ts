@@ -7,17 +7,17 @@ import { strict as assert } from 'assert';
 
 import {
   type EvaluationContext,
+  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   type InternalValueRepresentation,
+  type PolarsInternal,
   type TransformDefinition,
   type TransformOutputAssignment,
   type TransformPortDefinition,
   type ValueType,
   evaluateExpression,
-  extendPolarsExpression,
+  polarsEvaluateExpression,
 } from '@jvalue/jayvee-language-server';
-import { either } from 'fp-ts';
 import { zipWith } from 'fp-ts/lib/ReadonlyArray.js';
-import { assertUnreachable } from 'langium';
 import { pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../execution-context';
@@ -72,14 +72,10 @@ export abstract class TransformExecutor<I, O> {
     return outputAssignments[0]!;
   }
 
-  executeTransform(
-    input: I,
-    context: ExecutionContext,
-    n_rows: number,
-  ): O | undefined {
+  executeTransform(input: I, context: ExecutionContext): O | undefined {
     context.enterNode(this.transform);
 
-    const result = this.doExecuteTransform(input, context, n_rows);
+    const result = this.doExecuteTransform(input, context);
     context.exitNode(this.transform);
 
     return result;
@@ -88,13 +84,12 @@ export abstract class TransformExecutor<I, O> {
   protected abstract doExecuteTransform(
     input: I,
     context: ExecutionContext,
-    colLen: number,
   ): O | undefined;
 }
 
 export class PolarsTransformExecutor extends TransformExecutor<
   string[],
-  either.Either<pl.Expr, pl.Series>
+  InternalValueRepresentation | PolarsInternal
 > {
   private static addInputColumnsToContext(
     inputDetailsList: readonly PortDetails[],
@@ -112,10 +107,9 @@ export class PolarsTransformExecutor extends TransformExecutor<
   protected override doExecuteTransform(
     inputColumns: string[],
     context: ExecutionContext,
-    n_rows: number,
-  ): either.Either<pl.Expr, pl.Series> | undefined {
+  ): InternalValueRepresentation | PolarsInternal | undefined {
     const inputDetails = this.getInputDetails();
-    const outputDetail = this.getOutputDetails();
+    const outputDetails = this.getOutputDetails();
 
     PolarsTransformExecutor.addInputColumnsToContext(
       inputDetails,
@@ -123,13 +117,13 @@ export class PolarsTransformExecutor extends TransformExecutor<
       context.evaluationContext,
     );
 
-    let eith: either.Either<pl.Expr, pl.Series> | undefined = undefined;
+    let newValue: InternalValueRepresentation | PolarsInternal | undefined =
+      undefined;
     try {
-      eith = extendPolarsExpression(
+      newValue = polarsEvaluateExpression(
         this.getOutputAssignment().expression,
         context.evaluationContext,
         context.wrapperFactories,
-        n_rows,
       );
     } catch (e) {
       if (e instanceof Error) {
@@ -139,21 +133,30 @@ export class PolarsTransformExecutor extends TransformExecutor<
       }
     }
 
-    if (eith === undefined) {
+    if (newValue === undefined) {
       return undefined;
     }
 
-    const otype = outputDetail.valueType.toPolarsDataType();
+    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(newValue)) {
+      if (
+        !isValidValueRepresentation(newValue, outputDetails.valueType, context)
+      ) {
+        context.logger.logDebug(
+          `Invalid value: "${JSON.stringify(
+            newValue,
+          )}" does not match the type ${outputDetails.valueType.getName()}`,
+        );
+        return undefined;
+      }
+      return newValue;
+    }
+
+    // typeof newValue === PolarsInternal
+    const otype = outputDetails.valueType.toPolarsDataType();
     if (otype === undefined) {
       return undefined;
     }
-
-    if (either.isLeft(eith)) {
-      return either.left(eith.left.cast(otype));
-    } else if (either.isRight(eith)) {
-      return either.right(eith.right.cast(otype));
-    }
-    assertUnreachable(eith);
+    return newValue.cast(otype);
   }
 }
 

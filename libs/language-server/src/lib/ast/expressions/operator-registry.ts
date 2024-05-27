@@ -46,7 +46,10 @@ import { SqrtOperatorEvaluator } from './evaluators/sqrt-operator-evaluator';
 import { SubtractionOperatorEvaluator } from './evaluators/subtraction-operator-evaluator';
 import { UppercaseOperatorEvaluator } from './evaluators/uppercase-operator-evaluator';
 import { XorOperatorEvaluator } from './evaluators/xor-operator-evaluator';
-import { type OperatorEvaluator } from './operator-evaluator';
+import {
+  type OperatorEvaluator,
+  type PolarsOperatorEvaluator,
+} from './operator-evaluator';
 import {
   type BinaryOperatorTypeComputer,
   type TernaryOperatorTypeComputer,
@@ -79,7 +82,10 @@ import { SqrtOperatorTypeComputer } from './type-computers/sqrt-operator-type-co
 import { StringTransformTypeComputer } from './type-computers/string-transform-type-computer';
 
 export interface OperatorEvaluatorRegistry {
-  unary: Record<UnaryExpressionOperator, OperatorEvaluator<UnaryExpression>>;
+  unary: Record<
+    UnaryExpressionOperator,
+    PolarsOperatorEvaluator<UnaryExpression>
+  >;
   binary: Record<BinaryExpressionOperator, OperatorEvaluator<BinaryExpression>>;
   ternary: Record<
     TernaryExpressionOperator,

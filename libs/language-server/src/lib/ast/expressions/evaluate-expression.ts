@@ -5,9 +5,7 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
-import * as fp from 'fp-ts';
 import { assertUnreachable } from 'langium';
-import { pl } from 'nodejs-polars';
 
 import { type ValidationContext } from '../../validation';
 import {
@@ -34,8 +32,14 @@ import { type ValueType, type WrapperFactoryProvider } from '../wrappers';
 
 import { type EvaluationContext } from './evaluation-context';
 import { EvaluationStrategy } from './evaluation-strategy';
-import { type InternalValueRepresentation } from './internal-value-representation';
-import { type OperatorEvaluator } from './operator-evaluator';
+import {
+  type InternalValueRepresentation,
+  type PolarsInternal,
+} from './internal-value-representation';
+import {
+  PolarsOperatorEvaluator,
+  type OperatorEvaluator,
+} from './operator-evaluator';
 import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   isEveryValueDefined,
@@ -93,70 +97,59 @@ export function evaluatePropertyValue<T extends InternalValueRepresentation>(
 function getEvaluator(
   expression: UnaryExpression | BinaryExpression | TernaryExpression,
   evaluationContext: EvaluationContext,
-): OperatorEvaluator<UnaryExpression | BinaryExpression | TernaryExpression> {
+): PolarsOperatorEvaluator<
+  UnaryExpression | BinaryExpression | TernaryExpression
+> {
   if (isUnaryExpression(expression)) {
     const operator = expression.operator;
     return evaluationContext.operatorRegistry.unary[operator];
   }
   if (isBinaryExpression(expression)) {
     const operator = expression.operator;
-    return evaluationContext.operatorRegistry.binary[operator];
+    throw new Error('Binary operations are not supported yet');
+    //return evaluationContext.operatorRegistry.binary[operator];
   }
   if (isTernaryExpression(expression)) {
     const operator = expression.operator;
-    return evaluationContext.operatorRegistry.ternary[operator];
+    throw new Error('Binary operations are not supported yet');
+    //return evaluationContext.operatorRegistry.ternary[operator];
   }
   assertUnreachable(expression);
 }
 
-export function extendPolarsExpression(
+export function polarsEvaluateExpression(
   expression: Expression | undefined,
   evaluationContext: EvaluationContext,
   wrapperFactories: WrapperFactoryProvider,
-  colLen: number,
   context: ValidationContext | undefined = undefined,
   strategy: EvaluationStrategy = EvaluationStrategy.LAZY,
-): fp.either.Either<pl.Expr, pl.Series> | undefined {
+): InternalValueRepresentation | PolarsInternal | undefined {
   if (expression === undefined) {
     return undefined;
   }
   if (isExpressionLiteral(expression)) {
     if (isFreeVariableLiteral(expression)) {
-      const fv = evaluationContext.getValueFor(expression);
-      if (fv === undefined) {
-        return undefined;
-      }
-      if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(fv)) {
-        return fp.either.right(pl.repeat(fv, colLen));
-      }
-      return fp.either.left(fv);
+      return evaluationContext.getValueFor(expression);
     } else if (isValueLiteral(expression)) {
-      const lit = evaluateValueLiteral(
+      return evaluateValueLiteral(
         expression,
         evaluationContext,
         wrapperFactories,
         context,
         strategy,
       );
-      return fp.either.right(pl.repeat(lit, colLen));
     }
     assertUnreachable(expression);
   }
   const evaluator = getEvaluator(expression, evaluationContext);
 
-  const value = evaluator.evaluate(
+  return evaluator.polarsEvaluate(
     expression,
     evaluationContext,
     wrapperFactories,
     strategy,
     context,
   );
-
-  if (value === undefined) {
-    return undefined;
-  }
-
-  return fp.either.right(pl.repeat(value, colLen));
 }
 
 export function evaluateExpression(

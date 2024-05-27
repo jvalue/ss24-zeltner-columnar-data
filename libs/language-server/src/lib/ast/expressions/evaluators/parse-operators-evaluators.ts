@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { type ValueTypeProvider } from '../../wrappers';
+import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
 import { STRING_TYPEGUARD } from '../typeguards';
 
@@ -15,6 +16,11 @@ export class AsTextOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   }
   override doEvaluate(operandValue: string): string {
     return this.valueTypeProvider.Primitives.Text.fromString(operandValue);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
+    throw new Error('pola.rs does not support parsing values, currently');
   }
 }
 
@@ -33,6 +39,11 @@ export class AsDecimalOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     }
     return dec;
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
+    throw new Error('pola.rs does not support parsing values, currently');
+  }
 }
 
 export class AsIntegerOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
@@ -50,6 +61,11 @@ export class AsIntegerOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     }
     return int;
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
+    throw new Error('pola.rs does not support parsing values, currently');
+  }
 }
 
 export class AsBooleanOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
@@ -66,5 +82,10 @@ export class AsBooleanOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
       throw new Error(`Could not parse "${operandValue}" into a Boolean`);
     }
     return bool;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
+    throw new Error('pola.rs does not support parsing values, currently');
   }
 }

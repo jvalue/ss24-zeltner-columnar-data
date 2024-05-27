@@ -13,18 +13,23 @@ import {
 } from '../generated/ast';
 import { type WrapperFactoryProvider } from '../wrappers';
 
-import { evaluateExpression } from './evaluate-expression';
+import {
+  evaluateExpression,
+  polarsEvaluateExpression,
+} from './evaluate-expression';
 import { type EvaluationContext } from './evaluation-context';
 import { EvaluationStrategy } from './evaluation-strategy';
 import {
   type InternalValueRepresentation,
   type InternalValueRepresentationTypeguard,
+  type PolarsInternal,
 } from './internal-value-representation';
 import {
   type BinaryExpressionOperator,
   type TernaryExpressionOperator,
   type UnaryExpressionOperator,
 } from './operator-types';
+import { INTERNAL_VALUE_REPRESENTATION_TYPEGUARD } from './typeguards';
 
 export interface OperatorEvaluator<
   E extends UnaryExpression | BinaryExpression | TernaryExpression,
@@ -43,21 +48,66 @@ export interface OperatorEvaluator<
   ): InternalValueRepresentation | undefined;
 }
 
+export interface PolarsOperatorEvaluator<
+  E extends UnaryExpression | BinaryExpression | TernaryExpression,
+> extends OperatorEvaluator<E> {
+  readonly operator: E['operator'];
+
+  polarsEvaluate(
+    expression: E,
+    evaluationContext: EvaluationContext,
+    wrapperFactories: WrapperFactoryProvider,
+    strategy: EvaluationStrategy,
+    validationContext: ValidationContext | undefined,
+  ): InternalValueRepresentation | PolarsInternal | undefined;
+}
+
 export abstract class DefaultUnaryOperatorEvaluator<
   O extends InternalValueRepresentation,
   T extends InternalValueRepresentation,
-> implements OperatorEvaluator<UnaryExpression>
+> implements PolarsOperatorEvaluator<UnaryExpression>
 {
   constructor(
     public readonly operator: UnaryExpressionOperator,
     private readonly operandValueTypeguard: InternalValueRepresentationTypeguard<O>,
   ) {}
+  polarsEvaluate(
+    expression: UnaryExpression,
+    evaluationContext: EvaluationContext,
+    wrapperFactories: WrapperFactoryProvider,
+    strategy: EvaluationStrategy,
+    validationContext: ValidationContext | undefined,
+  ): InternalValueRepresentation | PolarsInternal | undefined {
+    assert(expression.operator === this.operator);
+    const operandValue = polarsEvaluateExpression(
+      expression.expression,
+      evaluationContext,
+      wrapperFactories,
+      validationContext,
+      strategy,
+    );
+    if (operandValue === undefined) {
+      return undefined;
+    }
+
+    if (this.operandValueTypeguard(operandValue)) {
+      return this.doEvaluate(operandValue, expression, validationContext);
+    }
+    assert(!INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(operandValue));
+    return this.polarsDoEvaluate(operandValue, expression, validationContext);
+  }
 
   protected abstract doEvaluate(
     operandValue: O,
     expression: UnaryExpression,
     context: ValidationContext | undefined,
   ): T | undefined;
+
+  protected abstract polarsDoEvaluate(
+    operandValue: PolarsInternal,
+    expression: UnaryExpression,
+    context: ValidationContext | undefined,
+  ): PolarsInternal;
 
   evaluate(
     expression: UnaryExpression,

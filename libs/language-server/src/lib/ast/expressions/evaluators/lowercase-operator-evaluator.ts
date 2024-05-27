@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
 import { STRING_TYPEGUARD } from '../typeguards';
 
@@ -14,5 +15,10 @@ export class LowercaseOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   }
   override doEvaluate(operandValue: string): string {
     return operandValue.toLowerCase();
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
+    throw new Error('`lowercase` is not supported yet');
   }
 }

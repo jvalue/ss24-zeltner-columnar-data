@@ -14,9 +14,13 @@ import {
   TsTransformExecutor,
   implementsStatic,
 } from '@jvalue/jayvee-execution';
-import { IOType } from '@jvalue/jayvee-language-server';
-import { either } from 'fp-ts';
-import { type pl } from 'nodejs-polars';
+import {
+  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
+  IOType,
+  type InternalValueRepresentation,
+  type PolarsInternal,
+} from '@jvalue/jayvee-language-server';
+import { pl } from 'nodejs-polars';
 
 export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
   IOType.TABLE,
@@ -114,6 +118,17 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
 @implementsStatic<BlockExecutorClass>()
 export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
   public static readonly type = 'PolarsTableTransformer';
+
+  private newColumn(
+    x: InternalValueRepresentation | PolarsInternal,
+    nrows: number,
+  ): PolarsInternal {
+    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(x)) {
+      return pl.repeat(x, nrows);
+    }
+    return x;
+  }
+
   // eslint-disable-next-line @typescript-eslint/require-await
   override async doExecute(
     inputTable: R.PolarsTable,
@@ -157,11 +172,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       return checkInputColumnsMatchTransformInputTypesResult;
     }
 
-    const eith = executor.executeTransform(
-      inputColumnNames,
-      context,
-      inputTable.getNumberOfRows(),
-    );
+    const newValue = executor.executeTransform(inputColumnNames, context);
 
     this.logColumnOverwriteStatus(
       inputTable,
@@ -170,7 +181,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       executor.getOutputDetails(),
     );
 
-    if (eith === undefined) {
+    if (newValue === undefined) {
       return R.err({
         message: 'Skipping transform: Could not evaluate transform expression',
         diagnostic: {
@@ -179,15 +190,8 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       });
     }
 
-    let ncol: pl.Expr | pl.Series | undefined = undefined;
-    if (either.isRight(eith)) {
-      ncol = eith.right.rename(outputColumnName);
-    } else if (either.isLeft(eith)) {
-      ncol = eith.left.alias(outputColumnName);
-    }
-    assert(ncol !== undefined);
-
-    const ndf = inputTable.df.withColumn(ncol);
+    const ncol = this.newColumn(newValue, inputTable.getNumberOfRows());
+    const ndf = inputTable.df.withColumn(ncol.alias(outputColumnName));
     return R.ok(new R.PolarsTable(ndf));
   }
 }
@@ -259,7 +263,6 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
         numberOfRows: inputTable.getNumberOfRows(),
       },
       context,
-      inputTable.getNumberOfRows(),
     );
 
     if (transformResult === undefined) {
