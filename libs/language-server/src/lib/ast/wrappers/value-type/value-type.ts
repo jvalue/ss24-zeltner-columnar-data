@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type DataType as PolarsDataType } from 'nodejs-polars';
+
 import { type InternalValueRepresentation } from '../../expressions/internal-value-representation';
 
 import { type AtomicValueType } from './atomic-value-type';
@@ -72,6 +74,11 @@ export interface ValueType<
 
   isAllowedAsRuntimeParameter(): boolean;
   getName(): string;
+
+  /**
+   * EXPERIMENTAL: Converts this valueType to its pola.rs equivalent
+   */
+  toPolarsDataType(): PolarsDataType | undefined;
 
   equals(target: ValueType): boolean;
 }

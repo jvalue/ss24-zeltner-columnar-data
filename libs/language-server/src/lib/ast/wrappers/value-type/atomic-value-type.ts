@@ -111,6 +111,10 @@ export class AtomicValueType
     }
     return false;
   }
+
+  override toPolarsDataType(): undefined {
+    return undefined;
+  }
 }
 
 export function isAtomicValueType(v: unknown): v is AtomicValueType {

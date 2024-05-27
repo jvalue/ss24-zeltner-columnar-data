@@ -25,7 +25,6 @@ import {
   type InternalValueRepresentation,
   type ValueType,
   type ValuetypeAssignment,
-  isPrimitiveValueType,
   rowIndexToString,
 } from '@jvalue/jayvee-language-server';
 import pl, { type DataType as PlDType } from 'nodejs-polars';
@@ -195,6 +194,19 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
   }
 }
 
+export function toPolarsDataTypeWithLogs(
+  vt: ValueType,
+  logger: R.Logger,
+): PlDType | undefined {
+  const dt = vt.toPolarsDataType();
+  if (dt === undefined) {
+    logger.logDebug(
+      `${vt.getName()} isnt primitive and thus not convertible to polars`,
+    );
+  }
+  return dt;
+}
+
 @implementsStatic<BlockExecutorClass>()
 export class PolarsTableInterpreterExecutor extends TableInterpeter {
   public static readonly type = 'PolarsTableInterpreter';
@@ -213,29 +225,14 @@ export class PolarsTableInterpreterExecutor extends TableInterpeter {
     return new PolarsTable(df);
   }
 
-  // TODO: Decide if this is the right place for this function
-  private toPlDType(vt: ValueType, logger: R.Logger): PlDType | undefined {
-    if (isPrimitiveValueType(vt)) {
-      const dt = vt.asPolarsDType();
-      if (dt === undefined) {
-        logger.logErr(`${vt.getName()} to polars is not yet implemented`);
-        return undefined;
-      }
-      return dt;
-    }
-    logger.logDebug(
-      `${vt.getName()} isnt primitive and thus not convertible to polars`,
-    );
-    return undefined;
-  }
-
   private constructSeries(
     rows: readonly (readonly string[])[],
     columnEntry: ColumnDefinitionEntry,
     context: ExecutionContext,
   ): pl.Series {
     const dtype =
-      this.toPlDType(columnEntry.valueType, context.logger) || pl.String;
+      toPolarsDataTypeWithLogs(columnEntry.valueType, context.logger) ||
+      pl.String;
     const cData = rows.map((row) => {
       const cell = row[columnEntry.sheetColumnIndex];
       if (cell === undefined) {

@@ -64,7 +64,7 @@ Example: 3
     return integerNumber;
   }
 
-  override asPolarsDType(): PlDType | undefined {
+  override toPolarsDataType(): PlDType {
     return PlDType.Int64;
   }
 }

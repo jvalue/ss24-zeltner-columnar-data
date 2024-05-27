@@ -53,7 +53,7 @@ Example: 3.14
     return parseDecimal(s);
   }
 
-  override asPolarsDType(): PlDType | undefined {
+  override toPolarsDataType(): PlDType {
     return PlDType.Float64;
   }
 }

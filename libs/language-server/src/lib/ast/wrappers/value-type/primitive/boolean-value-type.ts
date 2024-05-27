@@ -51,7 +51,7 @@ Examples: true, false
     return undefined;
   }
 
-  override asPolarsDType(): PlDType | undefined {
+  override toPolarsDataType(): PlDType {
     return PlDType.Bool;
   }
 }

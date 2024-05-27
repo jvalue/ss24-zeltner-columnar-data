@@ -14,4 +14,8 @@ export abstract class AbstractCollectionValueType<
   override isAllowedAsRuntimeParameter(): boolean {
     return false;
   }
+
+  override toPolarsDataType(): undefined {
+    return undefined;
+  }
 }

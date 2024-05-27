@@ -14,7 +14,6 @@ import {
   type ValueType,
   evaluateExpression,
   extendPolarsExpression,
-  isPrimitiveValueType,
 } from '@jvalue/jayvee-language-server';
 import { either } from 'fp-ts';
 import { zipWith } from 'fp-ts/lib/ReadonlyArray.js';
@@ -144,8 +143,7 @@ export class PolarsTransformExecutor extends TransformExecutor<
       return undefined;
     }
 
-    assert(isPrimitiveValueType(outputDetail.valueType));
-    const otype = outputDetail.valueType.asPolarsDType();
+    const otype = outputDetail.valueType.toPolarsDataType();
     if (otype === undefined) {
       return undefined;
     }

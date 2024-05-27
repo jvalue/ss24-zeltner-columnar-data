@@ -52,6 +52,63 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
       }
     }
   }
+
+  protected checkInputColumnsMatchTransformInputTypes(
+    inputColumnNames: string[],
+    inputTable: R.Table,
+    transformInputDetailsList: PortDetails[],
+    context: R.ExecutionContext,
+  ): R.Result<undefined> {
+    for (let i = 0; i < inputColumnNames.length; ++i) {
+      const inputColumnName = inputColumnNames[i];
+      assert(inputColumnName !== undefined);
+      const inputColumn = inputTable.getColumn(inputColumnName);
+      assert(inputColumn !== undefined);
+
+      const matchingInputDetails = transformInputDetailsList[i];
+      assert(matchingInputDetails !== undefined);
+
+      if (
+        !inputColumn
+          .getValueType(context.valueTypeProvider)
+          .isConvertibleTo(matchingInputDetails.valueType)
+      ) {
+        return R.err({
+          message: `Type ${inputColumn
+            .getValueType(context.valueTypeProvider)
+            .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
+          diagnostic: {
+            node: context.getOrFailProperty('use'),
+          },
+        });
+      }
+    }
+    return R.ok(undefined);
+  }
+
+  protected checkInputColumnsExist(
+    inputColumnNames: string[],
+    inputTable: R.Table,
+    context: R.ExecutionContext,
+  ): R.Result<undefined> {
+    // check input columns exist
+    let i = 0;
+    for (const inputColumnName of inputColumnNames) {
+      const inputColumn = inputTable.getColumn(inputColumnName);
+      if (inputColumn === undefined) {
+        return R.err({
+          message: `The specified input column "${inputColumnName}" does not exist in the given table`,
+          diagnostic: {
+            node: context.getOrFailProperty('inputColumns').value,
+            property: 'values',
+            index: i,
+          },
+        });
+      }
+      ++i;
+    }
+    return R.ok(undefined);
+  }
 }
 
 @implementsStatic<BlockExecutorClass>()
@@ -77,7 +134,29 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       context.valueTypeProvider.Primitives.Transform,
     );
 
+    const checkInputColumnsExistResult = this.checkInputColumnsExist(
+      inputColumnNames,
+      inputTable,
+      context,
+    );
+    if (R.isErr(checkInputColumnsExistResult)) {
+      return checkInputColumnsExistResult;
+    }
+
     const executor = new R.PolarsTransformExecutor(usedTransform, context);
+
+    const transformInputDetailsList = executor.getInputDetails();
+    const checkInputColumnsMatchTransformInputTypesResult =
+      this.checkInputColumnsMatchTransformInputTypes(
+        inputColumnNames,
+        inputTable,
+        transformInputDetailsList,
+        context,
+      );
+    if (R.isErr(checkInputColumnsMatchTransformInputTypesResult)) {
+      return checkInputColumnsMatchTransformInputTypesResult;
+    }
+
     const eith = executor.executeTransform(
       inputColumnNames,
       context,
@@ -160,9 +239,12 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
     if (R.isErr(checkInputColumnsMatchTransformInputTypesResult)) {
       return checkInputColumnsMatchTransformInputTypesResult;
     }
-    const variableToColumnMap: Map<string, R.TsTableColumn> = R.okData(
-      checkInputColumnsMatchTransformInputTypesResult,
-    );
+    const variableToColumnMap: Map<string, R.TsTableColumn> = new Map();
+    inputColumnNames.forEach((inputColumnName) => {
+      const col = inputTable.getColumn(inputColumnName);
+      assert(col !== undefined);
+      variableToColumnMap.set(inputColumnName, col);
+    });
 
     this.logColumnOverwriteStatus(
       inputTable,
@@ -207,13 +289,12 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
     return outputTable;
   }
 
-  checkInputColumnsMatchTransformInputTypes(
+  protected override checkInputColumnsMatchTransformInputTypes(
     inputColumnNames: string[],
-    inputTable: R.TsTable,
+    inputTable: R.Table,
     transformInputDetailsList: PortDetails[],
     context: R.ExecutionContext,
-  ): R.Result<Map<string, R.TsTableColumn>> {
-    const variableToColumnMap = new Map<string, R.TsTableColumn>();
+  ): R.Result<undefined> {
     for (let i = 0; i < inputColumnNames.length; ++i) {
       const inputColumnName = inputColumnNames[i];
       assert(inputColumnName !== undefined);
@@ -225,44 +306,18 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
 
       if (
         !inputColumn
-          .getValueType()
+          .getValueType(context.valueTypeProvider)
           .isConvertibleTo(matchingInputDetails.valueType)
       ) {
         return R.err({
           message: `Type ${inputColumn
-            .getValueType()
+            .getValueType(context.valueTypeProvider)
             .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
           diagnostic: {
             node: context.getOrFailProperty('use'),
           },
         });
       }
-      const variableName = matchingInputDetails.port.name;
-      variableToColumnMap.set(variableName, inputColumn);
-    }
-    return R.ok(variableToColumnMap);
-  }
-
-  checkInputColumnsExist(
-    inputColumnNames: string[],
-    inputTable: R.TsTable,
-    context: R.ExecutionContext,
-  ): R.Result<undefined> {
-    // check input columns exist
-    let i = 0;
-    for (const inputColumnName of inputColumnNames) {
-      const inputColumn = inputTable.getColumn(inputColumnName);
-      if (inputColumn === undefined) {
-        return R.err({
-          message: `The specified input column "${inputColumnName}" does not exist in the given table`,
-          diagnostic: {
-            node: context.getOrFailProperty('inputColumns').value,
-            property: 'values',
-            index: i,
-          },
-        });
-      }
-      ++i;
     }
     return R.ok(undefined);
   }

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type DataType as PlDType } from 'nodejs-polars';
+import { type DataType as PolarsDataType } from 'nodejs-polars';
 
 import { type InternalValueRepresentation } from '../../expressions';
 
@@ -63,4 +63,6 @@ export abstract class AbstractValueType<I extends InternalValueRepresentation>
 
     return supertype.hasSupertypeCycle(visited);
   }
+
+  abstract toPolarsDataType(): PolarsDataType | undefined;
 }

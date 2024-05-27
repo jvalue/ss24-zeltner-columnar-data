@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type DataType as PlDType } from 'nodejs-polars';
-
 import { type InternalValueRepresentation } from '../../../expressions/internal-value-representation';
 import {
   type ConstraintDefinition,
@@ -32,7 +30,7 @@ export class ConstraintValuetype extends PrimitiveValueType<ConstraintDefinition
     return isConstraintDefinition(operandValue);
   }
 
-  override asPolarsDType(): PlDType | undefined {
+  override toPolarsDataType(): undefined {
     return undefined;
   }
 }

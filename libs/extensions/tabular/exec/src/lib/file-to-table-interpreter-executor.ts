@@ -16,12 +16,13 @@ import {
   IOType,
   type ValueType,
   type ValuetypeAssignment,
-  isPrimitiveValueType,
 } from '@jvalue/jayvee-language-server';
 import pl, {
   type DataType as PlDType,
   type ReadCsvOptions,
 } from 'nodejs-polars';
+
+import { toPolarsDataTypeWithLogs } from './table-interpreter-executor';
 
 export interface ColumnDefinitionEntry {
   sheetColumnIndex: number;
@@ -41,22 +42,6 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
     super(IOType.FILE, IOType.TABLE);
   }
 
-  // TODO: Decide if this is the right place for this function
-  private toPlDType(vt: ValueType, logger: R.Logger): PlDType | undefined {
-    if (isPrimitiveValueType(vt)) {
-      const dt = vt.asPolarsDType();
-      if (dt === undefined) {
-        logger.logErr(`${vt.getName()} to polars is not yet implemented`);
-        return undefined;
-      }
-      return dt;
-    }
-    logger.logDebug(
-      `${vt.getName()} isnt primitive and thus not convertible to polars`,
-    );
-    return undefined;
-  }
-
   protected colsAndSchema(context: ExecutionContext): {
     columnNames: string[];
     schema: Record<string, PlDType>;
@@ -74,12 +59,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
 
     const schema: Record<string, PlDType> = {};
     const columnNames = colDefs.map((colDef) => {
-      if (!isPrimitiveValueType(colDef.valueType)) {
-        throw new Error(
-          `${colDef.valueType.getName()} is not supported in tables`,
-        );
-      }
-      const dt = colDef.valueType.asPolarsDType();
+      const dt = toPolarsDataTypeWithLogs(colDef.valueType, context.logger);
       if (dt === undefined) {
         throw new Error(
           `${colDef.valueType.getName()} is not supported in tables`,

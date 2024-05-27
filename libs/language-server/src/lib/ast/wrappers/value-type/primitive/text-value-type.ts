@@ -43,7 +43,7 @@ Example: "Hello World"
     return s;
   }
 
-  override asPolarsDType(): PlDType | undefined {
+  override toPolarsDataType(): PlDType {
     return PlDType.String;
   }
 }

@@ -11,8 +11,11 @@ import { pl } from 'nodejs-polars';
 
 import { type ValidationContext } from '../../validation';
 import {
+  type BinaryExpression,
   type Expression,
   type PropertyAssignment,
+  type TernaryExpression,
+  type UnaryExpression,
   type ValueLiteral,
   isBinaryExpression,
   isBlockTypeProperty,
@@ -32,6 +35,7 @@ import { type ValueType, type WrapperFactoryProvider } from '../wrappers';
 import { type EvaluationContext } from './evaluation-context';
 import { EvaluationStrategy } from './evaluation-strategy';
 import { type InternalValueRepresentation } from './internal-value-representation';
+import { type OperatorEvaluator } from './operator-evaluator';
 import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   isEveryValueDefined,
@@ -86,6 +90,25 @@ export function evaluatePropertyValue<T extends InternalValueRepresentation>(
   return result;
 }
 
+function getEvaluator(
+  expression: UnaryExpression | BinaryExpression | TernaryExpression,
+  evaluationContext: EvaluationContext,
+): OperatorEvaluator<UnaryExpression | BinaryExpression | TernaryExpression> {
+  if (isUnaryExpression(expression)) {
+    const operator = expression.operator;
+    return evaluationContext.operatorRegistry.unary[operator];
+  }
+  if (isBinaryExpression(expression)) {
+    const operator = expression.operator;
+    return evaluationContext.operatorRegistry.binary[operator];
+  }
+  if (isTernaryExpression(expression)) {
+    const operator = expression.operator;
+    return evaluationContext.operatorRegistry.ternary[operator];
+  }
+  assertUnreachable(expression);
+}
+
 export function extendPolarsExpression(
   expression: Expression | undefined,
   evaluationContext: EvaluationContext,
@@ -119,23 +142,21 @@ export function extendPolarsExpression(
     }
     assertUnreachable(expression);
   }
-  if (isUnaryExpression(expression)) {
-    const operator = expression.operator;
-    const evaluator = evaluationContext.operatorRegistry.unary[operator];
-    throw new Error('Unary expressions are not supported yet');
-  }
-  if (isBinaryExpression(expression)) {
-    const operator = expression.operator;
-    const evaluator = evaluationContext.operatorRegistry.binary[operator];
-    throw new Error('Unary expressions are not supported yet');
-  }
-  if (isTernaryExpression(expression)) {
-    const operator = expression.operator;
-    const evaluator = evaluationContext.operatorRegistry.ternary[operator];
+  const evaluator = getEvaluator(expression, evaluationContext);
 
-    throw new Error('Unary expressions are not supported yet');
+  const value = evaluator.evaluate(
+    expression,
+    evaluationContext,
+    wrapperFactories,
+    strategy,
+    context,
+  );
+
+  if (value === undefined) {
+    return undefined;
   }
-  assertUnreachable(expression);
+
+  return fp.either.right(pl.repeat(value, colLen));
 }
 
 export function evaluateExpression(
