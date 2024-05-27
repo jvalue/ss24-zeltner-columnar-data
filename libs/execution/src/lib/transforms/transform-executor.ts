@@ -14,9 +14,11 @@ import {
   type ValueType,
   evaluateExpression,
   extendPolarsExpression,
+  isPrimitiveValueType,
 } from '@jvalue/jayvee-language-server';
-import { type either } from 'fp-ts';
+import { either } from 'fp-ts';
 import { zipWith } from 'fp-ts/lib/ReadonlyArray.js';
+import { assertUnreachable } from 'langium';
 import { pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../execution-context';
@@ -114,7 +116,6 @@ export class PolarsTransformExecutor extends TransformExecutor<
     n_rows: number,
   ): either.Either<pl.Expr, pl.Series> | undefined {
     const inputDetails = this.getInputDetails();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const outputDetail = this.getOutputDetails();
 
     PolarsTransformExecutor.addInputColumnsToContext(
@@ -139,7 +140,22 @@ export class PolarsTransformExecutor extends TransformExecutor<
       }
     }
 
-    return eith;
+    if (eith === undefined) {
+      return undefined;
+    }
+
+    assert(isPrimitiveValueType(outputDetail.valueType));
+    const otype = outputDetail.valueType.asPolarsDType();
+    if (otype === undefined) {
+      return undefined;
+    }
+
+    if (either.isLeft(eith)) {
+      return either.left(eith.left.cast(otype));
+    } else if (either.isRight(eith)) {
+      return either.right(eith.right.cast(otype));
+    }
+    assertUnreachable(eith);
   }
 }
 
