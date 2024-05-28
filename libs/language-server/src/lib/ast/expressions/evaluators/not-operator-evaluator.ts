@@ -4,7 +4,7 @@
 
 import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
-import { BOOLEAN_TYPEGUARD, PL_EXPR_TYPEGUARD } from '../typeguards';
+import { BOOLEAN_TYPEGUARD } from '../typeguards';
 
 export class NotOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   boolean,
@@ -18,9 +18,6 @@ export class NotOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   }
 
   override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
-    if (PL_EXPR_TYPEGUARD(col)) {
-      return col.not();
-    }
-    throw new Error("pola.rs doesn't support `not` for `pl.Series` yet.");
+    return col.not();
   }
 }

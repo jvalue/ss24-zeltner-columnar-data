@@ -4,6 +4,7 @@
 
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type BinaryExpression } from '../../generated/ast';
+import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -39,5 +40,37 @@ export class PowOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
       return undefined;
     }
     return resultingValue;
+  }
+
+  override polarsDoEvaluate(
+    leftValue: number | PolarsInternal,
+    rightValue: number | PolarsInternal,
+    expression: BinaryExpression,
+    context: ValidationContext | undefined,
+  ): number | PolarsInternal | undefined {
+    if (NUMBER_TYPEGUARD(leftValue)) {
+      if (NUMBER_TYPEGUARD(rightValue)) {
+        return this.doEvaluate(leftValue, rightValue, expression, context);
+      }
+      context?.accept(
+        'error',
+        '<someNumber> pow <someColumn> is not supported yet',
+        {
+          node: expression.right,
+        },
+      );
+      return undefined;
+    }
+    if (NUMBER_TYPEGUARD(rightValue)) {
+      return leftValue.pow(rightValue);
+    }
+    context?.accept(
+      'error',
+      '<someColmun> pow <someOtherColumn> is not supported yet',
+      {
+        node: expression,
+      },
+    );
+    return undefined;
   }
 }

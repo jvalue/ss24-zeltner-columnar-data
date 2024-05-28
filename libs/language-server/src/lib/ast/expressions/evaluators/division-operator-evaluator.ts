@@ -5,8 +5,10 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
+import { pl } from 'nodejs-polars';
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type BinaryExpression } from '../../generated/ast';
+import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -35,5 +37,29 @@ export class DivisionOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
       return undefined;
     }
     return resultingValue;
+  }
+
+  override polarsDoEvaluate(
+    left: number | PolarsInternal,
+    right: number | PolarsInternal,
+    expression: BinaryExpression,
+    context: ValidationContext | undefined,
+  ): number | PolarsInternal | undefined {
+    if (NUMBER_TYPEGUARD(left)) {
+      if (NUMBER_TYPEGUARD(right)) {
+        return this.doEvaluate(left, right, expression, context);
+      }
+      context?.accept(
+        'warning',
+        `<someNumber> / <someColumn> is not fully supported yet. Using a hack`,
+        {
+          node: expression,
+        },
+      );
+      // HACK:
+      const one = right.div(right);
+      return one.mul(left).div(right);
+    }
+    return left.div(right);
   }
 }

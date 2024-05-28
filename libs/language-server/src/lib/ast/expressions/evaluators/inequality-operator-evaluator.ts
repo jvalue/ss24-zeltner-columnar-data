@@ -2,7 +2,10 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type InternalValueRepresentation } from '../internal-value-representation';
+import {
+  type InternalValueRepresentation,
+  type PolarsInternal,
+} from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { INTERNAL_VALUE_REPRESENTATION_TYPEGUARD } from '../typeguards';
 
@@ -23,5 +26,16 @@ export class InequalityOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
     right: InternalValueRepresentation,
   ): boolean {
     return left !== right;
+  }
+  override polarsDoEvaluate(
+    left: InternalValueRepresentation | PolarsInternal,
+    right: InternalValueRepresentation | PolarsInternal,
+  ): boolean | PolarsInternal {
+    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(left)) {
+      return INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(right)
+        ? this.doEvaluate(left, right)
+        : right.neq(left);
+    }
+    return left.neq(right);
   }
 }

@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -15,5 +16,16 @@ export class LessEqualOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
   }
   override doEvaluate(leftValue: number, rightValue: number): boolean {
     return leftValue <= rightValue;
+  }
+  override polarsDoEvaluate(
+    left: number | PolarsInternal,
+    right: number | PolarsInternal,
+  ): boolean | PolarsInternal {
+    if (NUMBER_TYPEGUARD(left)) {
+      return NUMBER_TYPEGUARD(right)
+        ? this.doEvaluate(left, right)
+        : right.gt(left);
+    }
+    return left.ltEq(right);
   }
 }

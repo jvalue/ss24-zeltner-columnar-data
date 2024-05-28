@@ -18,7 +18,7 @@ import {
 } from '../generated/ast';
 import type { WrapperFactoryProvider } from '../wrappers';
 
-export type PolarsInternal = pl.Expr | pl.Series;
+export type PolarsInternal = pl.Expr;
 
 export type InternalValueRepresentation =
   | AtomicInternalValueRepresentation

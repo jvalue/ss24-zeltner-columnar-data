@@ -122,7 +122,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
   private newColumn(
     x: InternalValueRepresentation | PolarsInternal,
     nrows: number,
-  ): PolarsInternal {
+  ): PolarsInternal | pl.Series {
     if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(x)) {
       return pl.repeat(x, nrows);
     }

@@ -112,18 +112,6 @@ export const INTERNAL_VALUE_REPRESENTATION_TYPEGUARD: InternalValueRepresentatio
   );
 };
 
-export const PL_SERIES_TYPEGUARD = (
-  value: pl.Expr | pl.Series,
-): value is pl.Series => {
-  return 'name' in value;
-};
-
-export const PL_EXPR_TYPEGUARD = (
-  value: pl.Expr | pl.Series,
-): value is pl.Expr => {
-  return !PL_SERIES_TYPEGUARD(value);
-};
-
 export function everyValueInternalRepresentationTypeguard<
   T extends InternalValueRepresentation,
 >(

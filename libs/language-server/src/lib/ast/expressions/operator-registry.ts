@@ -86,7 +86,10 @@ export interface OperatorEvaluatorRegistry {
     UnaryExpressionOperator,
     PolarsOperatorEvaluator<UnaryExpression>
   >;
-  binary: Record<BinaryExpressionOperator, OperatorEvaluator<BinaryExpression>>;
+  binary: Record<
+    BinaryExpressionOperator,
+    PolarsOperatorEvaluator<BinaryExpression>
+  >;
   ternary: Record<
     TernaryExpressionOperator,
     OperatorEvaluator<TernaryExpression>

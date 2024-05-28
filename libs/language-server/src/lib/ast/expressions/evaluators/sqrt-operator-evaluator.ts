@@ -9,7 +9,6 @@ import { type ValidationContext } from '../../../validation/validation-context';
 import { type UnaryExpression } from '../../generated/ast';
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
-import { PolarsInternal } from '../internal-value-representation';
 
 export class SqrtOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   number,
@@ -35,10 +34,5 @@ export class SqrtOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
       return undefined;
     }
     return resultingValue;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
-    throw new Error('`sqrt` is not supported yet');
   }
 }

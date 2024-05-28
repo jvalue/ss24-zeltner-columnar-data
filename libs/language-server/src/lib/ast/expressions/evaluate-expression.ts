@@ -106,12 +106,11 @@ function getEvaluator(
   }
   if (isBinaryExpression(expression)) {
     const operator = expression.operator;
-    throw new Error('Binary operations are not supported yet');
-    //return evaluationContext.operatorRegistry.binary[operator];
+    return evaluationContext.operatorRegistry.binary[operator];
   }
   if (isTernaryExpression(expression)) {
     const operator = expression.operator;
-    throw new Error('Binary operations are not supported yet');
+    throw new Error('Ternary operations are not supported yet');
     //return evaluationContext.operatorRegistry.ternary[operator];
   }
   assertUnreachable(expression);
