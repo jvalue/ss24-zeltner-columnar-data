@@ -1,0 +1,21 @@
+{
+  "extends": ["../../../../.eslintrc.json"],
+  "ignorePatterns": ["!**/*"],
+  "parserOptions": {
+    "project": ["libs/extensions/std/exec/tsconfig.lib.json", "libs/extensions/std/exec/tsconfig.spec.json"]
+  },
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "rules": {}
+    }
+  ]
+}

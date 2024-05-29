@@ -1,0 +1,71 @@
+{
+  "name": "monaco-editor",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/monaco-editor/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "build": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/monaco-editor",
+        "tsConfig": "libs/monaco-editor/tsconfig.lib.json",
+        "project": "libs/monaco-editor/package.json",
+        "entryFile": "libs/monaco-editor/src/index.ts",
+        "external": ["react/jsx-runtime"],
+        "rollupConfig": "@nx/react/plugins/bundle-rollup",
+        "compiler": "babel",
+        "assets": [
+          {
+            "glob": "libs/monaco-editor/README.md",
+            "input": ".",
+            "output": "."
+          }
+        ],
+        "babelUpwardRootMode": true,
+        "updateBuildableProjectDepsInPackageJson": true
+      },
+      "configurations": {
+        "dev": {},
+        "prod": {}
+      },
+      "defaultConfiguration": "dev"
+    },
+    "pre-publish": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "commands": [
+          "node tools/scripts/relax-peer-dependency-versions.mjs monaco-editor",
+          "node tools/scripts/monaco-editor/delete-vscode-peer-dependency.mjs monaco-editor",
+          "node tools/scripts/monaco-editor/relax-react-version.mjs monaco-editor",
+          "node tools/scripts/add-package-json-version.mjs monaco-editor",
+          "node tools/scripts/publish.mjs monaco-editor false" // dry-run
+        ],
+        "parallel": false
+      }
+    },
+    "publish": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["pre-publish"],
+      "options": {
+        "commands": ["node tools/scripts/publish.mjs monaco-editor true"],
+        "parallel": false
+      }
+    },
+    "pack": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["pre-publish"],
+      "options": {
+        "commands": ["node tools/scripts/pack.mjs monaco-editor"],
+        "parallel": false
+      }
+    }
+  },
+  "implicitDependencies": ["language-server"]
+}

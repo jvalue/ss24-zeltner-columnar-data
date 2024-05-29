@@ -1,0 +1,69 @@
+pipeline CarsPipeline {
+
+  CarsExtractor
+    -> CarsTextFileInterpreter
+    -> CarsCSVInterpreter
+    -> NameHeaderWriter
+    -> CarsTableInterpreter
+    -> MyTableTransformer
+    -> CarsLoader;
+
+
+  block CarsExtractor oftype HttpExtractor {
+    url: "https://gist.githubusercontent.com/noamross/e5d3e859aa0c794be10b/raw/b999fb4425b54c63cab088c0ce2c0d6ce961a563/cars.csv";
+  }
+
+
+  block CarsTextFileInterpreter oftype TextFileInterpreter { }
+
+  block CarsCSVInterpreter oftype CSVInterpreter {
+    enclosing: '"';
+  }
+
+  block NameHeaderWriter oftype CellWriter {
+    at: cell A1;
+
+    write: [
+      "name"
+    ];
+  }
+
+  block CarsTableInterpreter oftype TableInterpreter {
+    header: true;
+    columns: [
+      "name" oftype text,
+      "mpg" oftype decimal,
+      "cyl" oftype integer,
+      "disp" oftype decimal,
+      "hp" oftype integer,
+      "drat" oftype decimal,
+      "wt" oftype decimal,
+      "qsec" oftype decimal,
+      "vs" oftype integer,
+      "am" oftype integer,
+      "gear" oftype integer,
+      "carb" oftype integer
+    ];
+  }
+
+  transform IdentityTransform {
+    from mpg oftype decimal;
+    from cyl oftype integer;
+    to o oftype decimal;
+
+    o: mpg + cyl;
+  }
+
+  block MyTableTransformer oftype TableTransformer {
+    inputColumns: ['mpg', 'cyl'];
+    outputColumn: 'f(mpg, cyl)';
+
+    use: IdentityTransform;
+  }
+
+  block CarsLoader oftype SQLiteLoader {
+    table: "Cars";
+    file: "./cars.sqlite";
+  }
+}
+

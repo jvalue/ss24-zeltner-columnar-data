@@ -1,0 +1,22 @@
+{
+  "name": "execution",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/execution/src",
+  "projectType": "library",
+  "targets": {
+    "build": {},
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "configFile": "{projectRoot}/vite.config.ts",
+        "passWithNoTests": false
+      }
+    }
+  },
+  "tags": []
+}

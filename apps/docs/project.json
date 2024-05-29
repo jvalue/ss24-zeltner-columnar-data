@@ -1,0 +1,42 @@
+{
+  "name": "docs",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/docs/src",
+  "targets": {
+    "build": {
+      "executor": "@nx-plus/docusaurus:browser",
+      "options": {
+        "outputPath": "dist/apps/docs"
+      },
+      "dependsOn": ["generate"]
+    },
+    "serve": {
+      "executor": "@nx-plus/docusaurus:dev-server",
+      "options": {
+        "port": 3000
+      },
+      "dependsOn": ["generate"]
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx start docs-generator",
+        "parallel": false
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "version-snapshot": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["generate"],
+      "options": {
+        "commands": ["node tools/scripts/docs/create-new-version-snapshot.mjs"],
+        "parallel": false
+      }
+    }
+  },
+  "tags": []
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "exclude": ["vite.config.ts", "**/*.spec.ts", "**/*.test.ts"],
+  "include": ["**/*.ts"]
+}
