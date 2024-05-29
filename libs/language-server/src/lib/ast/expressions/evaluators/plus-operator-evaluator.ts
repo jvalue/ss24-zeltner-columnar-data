@@ -17,7 +17,7 @@ export class PlusOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     return operandValue;
   }
 
-  protected override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
-    return col;
+  protected override polarsDoEvaluate(operand: PolarsInternal): PolarsInternal {
+    return operand;
   }
 }

@@ -14,13 +14,7 @@ import {
   TsTransformExecutor,
   implementsStatic,
 } from '@jvalue/jayvee-execution';
-import {
-  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
-  IOType,
-  type InternalValueRepresentation,
-  type PolarsInternal,
-} from '@jvalue/jayvee-language-server';
-import { pl } from 'nodejs-polars';
+import { IOType } from '@jvalue/jayvee-language-server';
 
 export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
   IOType.TABLE,
@@ -119,16 +113,6 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
 export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
   public static readonly type = 'PolarsTableTransformer';
 
-  private newColumn(
-    x: InternalValueRepresentation | PolarsInternal,
-    nrows: number,
-  ): PolarsInternal | pl.Series {
-    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(x)) {
-      return pl.repeat(x, nrows);
-    }
-    return x;
-  }
-
   // eslint-disable-next-line @typescript-eslint/require-await
   override async doExecute(
     inputTable: R.PolarsTable,
@@ -172,7 +156,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       return checkInputColumnsMatchTransformInputTypesResult;
     }
 
-    const newValue = executor.executeTransform(inputColumnNames, context);
+    const expr = executor.executeTransform(inputColumnNames, context);
 
     this.logColumnOverwriteStatus(
       inputTable,
@@ -181,7 +165,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       executor.getOutputDetails(),
     );
 
-    if (newValue === undefined) {
+    if (expr === undefined) {
       return R.err({
         message: 'Skipping transform: Could not evaluate transform expression',
         diagnostic: {
@@ -190,8 +174,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       });
     }
 
-    const ncol = this.newColumn(newValue, inputTable.getNumberOfRows());
-    const ndf = inputTable.df.withColumn(ncol.alias(outputColumnName));
+    const ndf = inputTable.df.withColumn(expr.alias(outputColumnName));
     return R.ok(new R.PolarsTable(ndf));
   }
 }

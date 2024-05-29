@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { PolarsInternal } from '..';
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type BinaryExpression } from '../../generated/ast';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
@@ -44,37 +43,5 @@ export class RootOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
       return undefined;
     }
     return resultingValue;
-  }
-
-  override polarsDoEvaluate(
-    leftValue: number | PolarsInternal,
-    rightValue: number | PolarsInternal,
-    expression: BinaryExpression,
-    context: ValidationContext | undefined,
-  ): number | PolarsInternal | undefined {
-    if (NUMBER_TYPEGUARD(leftValue)) {
-      if (NUMBER_TYPEGUARD(rightValue)) {
-        return this.doEvaluate(leftValue, rightValue, expression, context);
-      }
-      context?.accept(
-        'error',
-        '<someNumber> root <someColumn> is not supported yet',
-        {
-          node: expression.right,
-        },
-      );
-      return undefined;
-    }
-    if (NUMBER_TYPEGUARD(rightValue)) {
-      return leftValue.pow(1 / rightValue);
-    }
-    context?.accept(
-      'error',
-      '<someColmun> root <someOtherColumn> is not supported yet',
-      {
-        node: expression,
-      },
-    );
-    return undefined;
   }
 }

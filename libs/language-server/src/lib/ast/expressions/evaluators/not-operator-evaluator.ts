@@ -17,7 +17,7 @@ export class NotOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     return !operandValue;
   }
 
-  override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
-    return col.not();
+  override polarsDoEvaluate(operand: PolarsInternal): PolarsInternal {
+    return operand.not();
   }
 }

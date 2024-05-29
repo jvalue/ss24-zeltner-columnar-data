@@ -6,6 +6,7 @@
 import { strict as assert } from 'assert';
 
 import { assertUnreachable } from 'langium';
+import { pl } from 'nodejs-polars';
 
 import { type ValidationContext } from '../../validation';
 import {
@@ -37,8 +38,8 @@ import {
   type PolarsInternal,
 } from './internal-value-representation';
 import {
-  PolarsOperatorEvaluator,
   type OperatorEvaluator,
+  type PolarsOperatorEvaluator,
 } from './operator-evaluator';
 import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
@@ -111,7 +112,7 @@ function getEvaluator(
   if (isTernaryExpression(expression)) {
     const operator = expression.operator;
     throw new Error('Ternary operations are not supported yet');
-    //return evaluationContext.operatorRegistry.ternary[operator];
+    // return evaluationContext.operatorRegistry.ternary[operator];
   }
   assertUnreachable(expression);
 }
@@ -122,21 +123,29 @@ export function polarsEvaluateExpression(
   wrapperFactories: WrapperFactoryProvider,
   context: ValidationContext | undefined = undefined,
   strategy: EvaluationStrategy = EvaluationStrategy.LAZY,
-): InternalValueRepresentation | PolarsInternal | undefined {
+): PolarsInternal | undefined {
   if (expression === undefined) {
     return undefined;
   }
   if (isExpressionLiteral(expression)) {
     if (isFreeVariableLiteral(expression)) {
-      return evaluationContext.getValueFor(expression);
+      const fv = evaluationContext.getValueFor(expression);
+      if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(fv)) {
+        return pl.lit(fv);
+      }
+      return fv;
     } else if (isValueLiteral(expression)) {
-      return evaluateValueLiteral(
+      const lit = evaluateValueLiteral(
         expression,
         evaluationContext,
         wrapperFactories,
         context,
         strategy,
       );
+      if (lit === undefined) {
+        return undefined;
+      }
+      return pl.lit(lit);
     }
     assertUnreachable(expression);
   }

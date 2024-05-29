@@ -41,26 +41,9 @@ export class ModuloOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
   }
 
   override polarsDoEvaluate(
-    left: number | PolarsInternal,
-    right: number | PolarsInternal,
-    expression: BinaryExpression,
-    context: ValidationContext | undefined,
-  ): number | PolarsInternal | undefined {
-    if (NUMBER_TYPEGUARD(left)) {
-      if (NUMBER_TYPEGUARD(right)) {
-        return this.doEvaluate(left, right, expression, context);
-      }
-      context?.accept(
-        'warning',
-        `<someNumber> - <someColumn> is not fully supported yet. Using a hack`,
-        {
-          node: expression,
-        },
-      );
-      // HACK:
-      const zero = right.mul(0);
-      return zero.add(left).modulo(right);
-    }
+    left: PolarsInternal,
+    right: PolarsInternal,
+  ): PolarsInternal | undefined {
     return left.modulo(right);
   }
 }

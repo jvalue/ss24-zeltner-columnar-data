@@ -4,7 +4,6 @@
 
 import { type PolarsInternal } from '../internal-value-representation';
 import { BooleanShortCircuitOperatorEvaluator } from '../operator-evaluator';
-import { BOOLEAN_TYPEGUARD } from '../typeguards';
 
 export class AndOperatorEvaluator extends BooleanShortCircuitOperatorEvaluator {
   constructor() {
@@ -22,15 +21,9 @@ export class AndOperatorEvaluator extends BooleanShortCircuitOperatorEvaluator {
     return leftValue && rightValue;
   }
   override polarsDoEvaluate(
-    leftValue: boolean | PolarsInternal,
-    rightValue: boolean | PolarsInternal,
-  ): boolean | PolarsInternal {
-    if (BOOLEAN_TYPEGUARD(leftValue)) {
-      if (BOOLEAN_TYPEGUARD(rightValue)) {
-        return this.polarsDoEvaluate(leftValue, rightValue);
-      }
-      return rightValue.and(leftValue);
-    }
+    leftValue: PolarsInternal,
+    rightValue: PolarsInternal,
+  ): PolarsInternal {
     return leftValue.and(rightValue);
   }
 }

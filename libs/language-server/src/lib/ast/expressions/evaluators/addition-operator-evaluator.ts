@@ -18,14 +18,9 @@ export class AdditionOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
     return leftValue + rightValue;
   }
   override polarsDoEvaluate(
-    left: number | PolarsInternal,
-    right: number | PolarsInternal,
-  ): number | PolarsInternal {
-    if (NUMBER_TYPEGUARD(left)) {
-      return NUMBER_TYPEGUARD(right)
-        ? this.doEvaluate(left, right)
-        : right.plus(left);
-    }
+    left: PolarsInternal,
+    right: PolarsInternal,
+  ): PolarsInternal {
     return left.plus(right);
   }
 }

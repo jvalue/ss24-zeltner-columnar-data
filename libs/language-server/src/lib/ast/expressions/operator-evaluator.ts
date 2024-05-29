@@ -62,7 +62,7 @@ export interface PolarsOperatorEvaluator<
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): InternalValueRepresentation | PolarsInternal | undefined;
+  ): PolarsInternal | undefined;
 }
 
 export abstract class DefaultUnaryOperatorEvaluator<
@@ -80,7 +80,7 @@ export abstract class DefaultUnaryOperatorEvaluator<
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): InternalValueRepresentation | PolarsInternal | undefined {
+  ): PolarsInternal | undefined {
     assert(expression.operator === this.operator);
     const operandValue = polarsEvaluateExpression(
       expression.expression,
@@ -93,10 +93,6 @@ export abstract class DefaultUnaryOperatorEvaluator<
       return undefined;
     }
 
-    if (this.operandValueTypeguard(operandValue)) {
-      return this.doEvaluate(operandValue, expression, validationContext);
-    }
-    assert(!INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(operandValue));
     return this.polarsDoEvaluate(operandValue, expression, validationContext);
   }
 
@@ -107,13 +103,10 @@ export abstract class DefaultUnaryOperatorEvaluator<
   ): T | undefined;
 
   protected polarsDoEvaluate(
-    operand: PolarsInternal,
+    _operand: PolarsInternal,
     expression: UnaryExpression,
     context: ValidationContext | undefined,
-  ): T | PolarsInternal | undefined {
-    if (this.operandValueTypeguard(operand)) {
-      return this.doEvaluate(operand, expression, context);
-    }
+  ): PolarsInternal | undefined {
     context?.accept('error', `${expression.operator} is not supported yet.`, {
       node: expression,
     });
@@ -165,14 +158,11 @@ export abstract class DefaultBinaryOperatorEvaluator<
   ): T | undefined;
 
   protected polarsDoEvaluate(
-    left: L | PolarsInternal,
-    right: R | PolarsInternal,
+    _left: PolarsInternal,
+    _right: PolarsInternal,
     expression: BinaryExpression,
     context: ValidationContext | undefined,
-  ): T | PolarsInternal | undefined {
-    if (this.leftValueTypeguard(left) && this.rightValueTypeguard(right)) {
-      return this.doEvaluate(left, right, expression, context);
-    }
+  ): PolarsInternal | undefined {
     context?.accept('error', `${expression.operator} is not supported yet.`, {
       node: expression,
     });
@@ -225,7 +215,7 @@ export abstract class DefaultBinaryOperatorEvaluator<
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): InternalValueRepresentation | PolarsInternal | undefined {
+  ): PolarsInternal | undefined {
     assert(expression.operator === this.operator);
     const leftValue = polarsEvaluateExpression(
       expression.left,
@@ -246,13 +236,6 @@ export abstract class DefaultBinaryOperatorEvaluator<
     );
     if (leftValue === undefined || rightValue === undefined) {
       return undefined;
-    }
-
-    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(leftValue)) {
-      assert(this.leftValueTypeguard(leftValue));
-    }
-    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(rightValue)) {
-      assert(this.rightValueTypeguard(rightValue));
     }
 
     return this.polarsDoEvaluate(
@@ -283,11 +266,11 @@ export abstract class BooleanShortCircuitOperatorEvaluator
   ): boolean;
 
   protected polarsDoEvaluate(
-    _left: boolean | PolarsInternal,
-    _right: boolean | PolarsInternal,
+    _left: PolarsInternal,
+    _right: PolarsInternal,
     expression: BinaryExpression,
     context: ValidationContext | undefined,
-  ): boolean | PolarsInternal | undefined {
+  ): PolarsInternal | undefined {
     context?.accept('error', `${expression.operator} is not supported yet.`, {
       node: expression,
     });
@@ -340,30 +323,18 @@ export abstract class BooleanShortCircuitOperatorEvaluator
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): boolean | PolarsInternal | undefined {
+  ): PolarsInternal | undefined {
     assert(expression.operator === this.operator);
-    const leftValue = polarsEvaluateExpression(
+    const left = polarsEvaluateExpression(
       expression.left,
       evaluationContext,
       wrapperFactories,
       validationContext,
       strategy,
     );
-    assert(
-      leftValue === undefined ||
-        BOOLEAN_TYPEGUARD(leftValue) ||
-        !INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(leftValue),
-    );
-    if (strategy === EvaluationStrategy.LAZY) {
-      if (leftValue === undefined) {
-        return undefined;
-      }
-      if (
-        BOOLEAN_TYPEGUARD(leftValue) &&
-        this.canSkipRightOperandEvaluation(leftValue)
-      ) {
-        return this.getShortCircuitValue();
-      }
+
+    if (strategy === EvaluationStrategy.LAZY && left === undefined) {
+      return undefined;
     }
 
     const rightValue = polarsEvaluateExpression(
@@ -373,16 +344,12 @@ export abstract class BooleanShortCircuitOperatorEvaluator
       validationContext,
       strategy,
     );
-    if (leftValue === undefined || rightValue === undefined) {
+    if (left === undefined || rightValue === undefined) {
       return undefined;
     }
-    assert(
-      BOOLEAN_TYPEGUARD(rightValue) ||
-        !INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(rightValue),
-    );
 
     return this.polarsDoEvaluate(
-      leftValue,
+      left,
       rightValue,
       expression,
       validationContext,

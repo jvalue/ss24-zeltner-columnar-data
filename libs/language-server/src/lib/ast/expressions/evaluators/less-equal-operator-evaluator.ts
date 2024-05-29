@@ -18,14 +18,9 @@ export class LessEqualOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
     return leftValue <= rightValue;
   }
   override polarsDoEvaluate(
-    left: number | PolarsInternal,
-    right: number | PolarsInternal,
-  ): boolean | PolarsInternal {
-    if (NUMBER_TYPEGUARD(left)) {
-      return NUMBER_TYPEGUARD(right)
-        ? this.doEvaluate(left, right)
-        : right.gt(left);
-    }
+    left: PolarsInternal,
+    right: PolarsInternal,
+  ): PolarsInternal {
     return left.ltEq(right);
   }
 }

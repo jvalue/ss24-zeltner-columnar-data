@@ -18,14 +18,9 @@ export class MultiplicationOperatorEvaluator extends DefaultBinaryOperatorEvalua
     return leftValue * rightValue;
   }
   override polarsDoEvaluate(
-    left: number | PolarsInternal,
-    right: number | PolarsInternal,
-  ): number | PolarsInternal {
-    if (NUMBER_TYPEGUARD(left)) {
-      return NUMBER_TYPEGUARD(right)
-        ? this.doEvaluate(left, right)
-        : right.mul(left);
-    }
+    left: PolarsInternal,
+    right: PolarsInternal,
+  ): PolarsInternal {
     return left.mul(right);
   }
 }

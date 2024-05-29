@@ -28,14 +28,9 @@ export class InequalityOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
     return left !== right;
   }
   override polarsDoEvaluate(
-    left: InternalValueRepresentation | PolarsInternal,
-    right: InternalValueRepresentation | PolarsInternal,
-  ): boolean | PolarsInternal {
-    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(left)) {
-      return INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(right)
-        ? this.doEvaluate(left, right)
-        : right.neq(left);
-    }
+    left: PolarsInternal,
+    right: PolarsInternal,
+  ): PolarsInternal {
     return left.neq(right);
   }
 }

@@ -7,7 +7,6 @@ import { strict as assert } from 'assert';
 
 import {
   type EvaluationContext,
-  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   type InternalValueRepresentation,
   type PolarsInternal,
   type TransformDefinition,
@@ -89,7 +88,7 @@ export abstract class TransformExecutor<I, O> {
 
 export class PolarsTransformExecutor extends TransformExecutor<
   string[],
-  InternalValueRepresentation | PolarsInternal
+  PolarsInternal
 > {
   private static addInputColumnsToContext(
     inputDetailsList: readonly PortDetails[],
@@ -107,7 +106,7 @@ export class PolarsTransformExecutor extends TransformExecutor<
   protected override doExecuteTransform(
     inputColumns: string[],
     context: ExecutionContext,
-  ): InternalValueRepresentation | PolarsInternal | undefined {
+  ): PolarsInternal | undefined {
     const inputDetails = this.getInputDetails();
     const outputDetails = this.getOutputDetails();
 
@@ -117,10 +116,9 @@ export class PolarsTransformExecutor extends TransformExecutor<
       context.evaluationContext,
     );
 
-    let newValue: InternalValueRepresentation | PolarsInternal | undefined =
-      undefined;
+    let expr: PolarsInternal | undefined = undefined;
     try {
-      newValue = polarsEvaluateExpression(
+      expr = polarsEvaluateExpression(
         this.getOutputAssignment().expression,
         context.evaluationContext,
         context.wrapperFactories,
@@ -133,30 +131,15 @@ export class PolarsTransformExecutor extends TransformExecutor<
       }
     }
 
-    if (newValue === undefined) {
+    if (expr === undefined) {
       return undefined;
     }
 
-    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(newValue)) {
-      if (
-        !isValidValueRepresentation(newValue, outputDetails.valueType, context)
-      ) {
-        context.logger.logDebug(
-          `Invalid value: "${JSON.stringify(
-            newValue,
-          )}" does not match the type ${outputDetails.valueType.getName()}`,
-        );
-        return undefined;
-      }
-      return newValue;
-    }
-
-    // typeof newValue === PolarsInternal
     const otype = outputDetails.valueType.toPolarsDataType();
     if (otype === undefined) {
       return undefined;
     }
-    return newValue.cast(otype);
+    return expr.cast(otype);
   }
 }
 
@@ -257,7 +240,6 @@ export class TsTransformExecutor extends TransformExecutor<
 
   private addVariablesToContext(
     inputDetailsList: PortDetails[],
-
     columns: ReadonlyMap<string, TableColumn>,
     rowIndex: number,
     context: ExecutionContext,
