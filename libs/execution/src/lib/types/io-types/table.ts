@@ -6,6 +6,7 @@
 import { strict as assert } from 'assert';
 
 import {
+  INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD,
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   IOType,
   type InternalValueRepresentation,
@@ -30,6 +31,7 @@ export abstract class TableColumn {
   abstract getValueType(provider: ValueTypeProvider): ValueType;
   abstract getName(): string;
   abstract nth(n: number): InternalValueRepresentation | undefined | null;
+  abstract clone(): TableColumn;
 
   abstract isPolars(): this is PolarsTableColumn;
   abstract isTypescript(): this is TsTableColumn;
@@ -61,6 +63,10 @@ export class PolarsTableColumn extends TableColumn {
         nth,
       )} (${typeof nth})`,
     );
+  }
+
+  override clone(): PolarsTableColumn {
+    return new PolarsTableColumn(this.series.clone());
   }
 
   override isPolars(): this is PolarsTableColumn {
@@ -97,6 +103,22 @@ export class TsTableColumn<
 
   override nth(n: number): T | undefined {
     return this.values.at(n);
+  }
+
+  override clone(): TsTableColumn {
+    // HACK: This feels wrong, but I didn't find any other solution
+    const clonedName: unknown = JSON.parse(JSON.stringify(this.name));
+    assert(typeof clonedName === 'string');
+    const clonedValues: unknown = JSON.parse(JSON.stringify(this.values));
+    assert(
+      INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD(clonedValues) &&
+        clonedValues.every((e) =>
+          this.valueType.isInternalValueRepresentation(e),
+        ),
+    );
+    // INFO: `this.valueType` must not be cloned, because the typesystem depends
+    // on it being the same object
+    return new TsTableColumn(clonedName, this.valueType, clonedValues);
   }
 
   override isPolars(): this is PolarsTableColumn {
@@ -332,6 +354,7 @@ export class TsTable extends Table {
 
   addColumn(name: string, column: TsTableColumn): void {
     assert(column.values.length === this.numberOfRows);
+    column.name = name;
     this.columns.set(name, column);
   }
 
@@ -393,32 +416,26 @@ export class TsTable extends Table {
   override generateInsertValuesStatement(tableName: string): string {
     const valueRepresentationVisitor = new SQLValueRepresentationVisitor();
 
-    const columnNames = [
-      ...this.getColumns().map((c) => {
-        return c.getName();
-      }),
-    ];
+    const columns = this.getColumns();
     const formattedRowValues: string[] = [];
     for (let rowIndex = 0; rowIndex < this.getNumberOfRows(); ++rowIndex) {
       const rowValues: string[] = [];
-      for (const columnName of columnNames) {
-        const column = this.getColumn(columnName);
-        const entry = column?.nth(rowIndex);
-        assert(entry !== undefined);
-        let formattedValue = 'NULL';
-        const tmp = column
-          ?.getValueType()
-          .acceptVisitor(valueRepresentationVisitor)(entry);
-        if (tmp !== undefined) {
-          formattedValue = tmp;
-        }
+      for (const column of columns) {
+        const entry = column.nth(rowIndex);
+
+        const formattedValue =
+          entry === undefined
+            ? 'NULL'
+            : column.getValueType().acceptVisitor(valueRepresentationVisitor)(
+                entry,
+              );
 
         rowValues.push(formattedValue);
       }
       formattedRowValues.push(`(${rowValues.join(',')})`);
     }
 
-    const formattedColumns = columnNames.map((c) => `"${c}"`).join(',');
+    const formattedColumns = columns.map((c) => `"${c.getName()}"`).join(',');
 
     return `INSERT INTO "${tableName}" (${formattedColumns}) VALUES ${formattedRowValues.join(
       ', ',
@@ -441,11 +458,14 @@ export class TsTable extends Table {
   }
 
   override clone(): TsTable {
-    const cloned = new TsTable(
-      this.numberOfRows,
-      structuredClone(this.columns),
-    );
-    return cloned;
+    const newColumns: Map<string, TsTableColumn> = new Map();
+    this.columns.forEach((column, name) => {
+      const clonedName: unknown = JSON.parse(JSON.stringify(name));
+      assert(typeof clonedName === 'string');
+      newColumns.set(clonedName, column.clone());
+    });
+
+    return new TsTable(this.numberOfRows, newColumns);
   }
 
   override acceptVisitor<R>(visitor: IoTypeVisitor<R>): R {

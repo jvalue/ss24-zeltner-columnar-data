@@ -167,7 +167,7 @@ export class TsTransformExecutor extends TransformExecutor<
     const outputDetails = this.getOutputDetails();
 
     const newColumn = new TsTableColumn(
-      outputDetails.port.name,
+      `THIS IS A TEMPORARY NAME EXPECTED TO BE CHANGED LATER!\nIF YOU SEE THIS, SOMETHING WENT WRONG`,
       outputDetails.valueType,
     );
     const rowsToDelete: number[] = [];
