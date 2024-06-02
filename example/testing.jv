@@ -58,7 +58,7 @@ pipeline CarsPipeline {
     inputColumns: ['mpg', 'cyl'];
     outputColumn: 'f(mpg, cyl)';
 
-    use: IdentityTransform;
+    uses: IdentityTransform;
   }
 
   block CarsLoader oftype SQLiteLoader {

@@ -199,7 +199,7 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
       context.valueTypeProvider.Primitives.Text,
     );
     const usedTransform = context.getPropertyValue(
-      'use',
+      'uses',
       context.valueTypeProvider.Primitives.Transform,
     );
 
