@@ -14,7 +14,8 @@ import {
   TsTransformExecutor,
   implementsStatic,
 } from '@jvalue/jayvee-execution';
-import { IOType } from '@jvalue/jayvee-language-server';
+import { IOType, type PolarsInternal } from '@jvalue/jayvee-language-server';
+import { pl } from 'nodejs-polars';
 
 export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
   IOType.TABLE,
@@ -51,39 +52,6 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
     }
   }
 
-  protected checkInputColumnsMatchTransformInputTypes(
-    inputColumnNames: string[],
-    inputTable: R.Table,
-    transformInputDetailsList: PortDetails[],
-    context: R.ExecutionContext,
-  ): R.Result<undefined> {
-    for (let i = 0; i < inputColumnNames.length; ++i) {
-      const inputColumnName = inputColumnNames[i];
-      assert(inputColumnName !== undefined);
-      const inputColumn = inputTable.getColumn(inputColumnName);
-      assert(inputColumn !== undefined);
-
-      const matchingInputDetails = transformInputDetailsList[i];
-      assert(matchingInputDetails !== undefined);
-
-      if (
-        !inputColumn
-          .getValueType(context.valueTypeProvider)
-          .isConvertibleTo(matchingInputDetails.valueType)
-      ) {
-        return R.err({
-          message: `Type ${inputColumn
-            .getValueType(context.valueTypeProvider)
-            .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
-          diagnostic: {
-            node: context.getOrFailProperty('uses'),
-          },
-        });
-      }
-    }
-    return R.ok(undefined);
-  }
-
   protected checkInputColumnsExist(
     inputColumnNames: string[],
     inputTable: R.Table,
@@ -112,6 +80,47 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
 @implementsStatic<BlockExecutorClass>()
 export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
   public static readonly type = 'PolarsTableTransformer';
+
+  // HINT: old name : checkInputColumnsMatchTransformInputTypes
+  // INFO: This function
+  // checks whether the input column valuetypes match with the transform input valuetypes
+  // returns a map from input names to column names
+  //
+  private checkInputColumnsMatchTransformInputTypes(
+    inputColumnNames: string[],
+    inputTable: R.PolarsTable,
+    transformInputDetailsList: PortDetails[],
+    context: R.ExecutionContext,
+  ): R.Result<Map<string, PolarsInternal>> {
+    const variableToColumnMap = new Map<string, PolarsInternal>();
+    for (let i = 0; i < inputColumnNames.length; ++i) {
+      const inputColumnName = inputColumnNames[i];
+      assert(inputColumnName !== undefined);
+      const inputColumn = inputTable.getColumn(inputColumnName);
+      assert(inputColumn !== undefined);
+
+      const matchingInputDetails = transformInputDetailsList[i];
+      assert(matchingInputDetails !== undefined);
+
+      if (
+        !inputColumn
+          .getValueType(context.valueTypeProvider)
+          .isConvertibleTo(matchingInputDetails.valueType)
+      ) {
+        return R.err({
+          message: `Type ${inputColumn
+            .getValueType(context.valueTypeProvider)
+            .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
+          diagnostic: {
+            node: context.getOrFailProperty('uses'),
+          },
+        });
+      }
+      const variableName = matchingInputDetails.port.name;
+      variableToColumnMap.set(variableName, pl.col(inputColumn.getName()));
+    }
+    return R.ok(variableToColumnMap);
+  }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   override async doExecute(
@@ -156,7 +165,9 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       return checkInputColumnsMatchTransformInputTypesResult;
     }
 
-    const expr = executor.executeTransform(inputColumnNames, context);
+    const varToCols = R.okData(checkInputColumnsMatchTransformInputTypesResult);
+
+    const expr = executor.executeTransform(varToCols, context);
 
     this.logColumnOverwriteStatus(
       inputTable,
@@ -182,6 +193,38 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
 @implementsStatic<BlockExecutorClass>()
 export class TsTableTransformerExecutor extends TableTransformerExecutor {
   public static readonly type = 'TsTableTransformer';
+
+  private checkInputColumnsMatchTransformInputTypes(
+    inputColumnNames: string[],
+    inputTable: R.TsTable,
+    transformInputDetailsList: PortDetails[],
+    context: R.ExecutionContext,
+  ): R.Result<Map<string, R.TsTableColumn>> {
+    const variableToColumnMap = new Map<string, R.TsTableColumn>();
+    for (let i = 0; i < inputColumnNames.length; ++i) {
+      const inputColumnName = inputColumnNames[i];
+      assert(inputColumnName !== undefined);
+      const inputColumn = inputTable.getColumn(inputColumnName);
+      assert(inputColumn !== undefined);
+
+      const matchingInputDetails = transformInputDetailsList[i];
+      assert(matchingInputDetails !== undefined);
+
+      if (
+        !inputColumn.valueType.isConvertibleTo(matchingInputDetails.valueType)
+      ) {
+        return R.err({
+          message: `Type ${inputColumn.valueType.getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
+          diagnostic: {
+            node: context.getOrFailProperty('uses'),
+          },
+        });
+      }
+      const variableName = matchingInputDetails.port.name;
+      variableToColumnMap.set(variableName, inputColumn);
+    }
+    return R.ok(variableToColumnMap);
+  }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   override async doExecute(
@@ -226,12 +269,9 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
     if (R.isErr(checkInputColumnsMatchTransformInputTypesResult)) {
       return checkInputColumnsMatchTransformInputTypesResult;
     }
-    const variableToColumnMap: Map<string, R.TsTableColumn> = new Map();
-    inputColumnNames.forEach((inputColumnName) => {
-      const col = inputTable.getColumn(inputColumnName);
-      assert(col !== undefined);
-      variableToColumnMap.set(inputColumnName, col);
-    });
+    const variableToColumnMap = R.okData(
+      checkInputColumnsMatchTransformInputTypesResult,
+    );
 
     this.logColumnOverwriteStatus(
       inputTable,

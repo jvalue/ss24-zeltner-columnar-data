@@ -16,12 +16,11 @@ import {
   evaluateExpression,
   polarsEvaluateExpression,
 } from '@jvalue/jayvee-language-server';
-import { zipWith } from 'fp-ts/lib/ReadonlyArray.js';
 import { pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
-import { type TableColumn, TsTableColumn } from '../types/io-types/table';
+import { TsTableColumn } from '../types/io-types/table';
 
 export interface PortDetails {
   port: TransformPortDefinition;
@@ -87,24 +86,24 @@ export abstract class TransformExecutor<I, O> {
 }
 
 export class PolarsTransformExecutor extends TransformExecutor<
-  string[],
+  Map<string, PolarsInternal>, // HINT: Map<variable name in the transform, column name>
   PolarsInternal
 > {
   private static addInputColumnsToContext(
     inputDetailsList: readonly PortDetails[],
-    columns: string[],
+    variableToColumnName: ReadonlyMap<string, PolarsInternal>,
     evaluationContext: EvaluationContext,
   ) {
-    zipWith(inputDetailsList, columns, (portDetails, colName) => {
-      evaluationContext.setValueForReference(
-        portDetails.port.name,
-        pl.col(colName),
-      );
+    inputDetailsList.forEach((inputDetail) => {
+      const variableName = inputDetail.port.name;
+      const column = variableToColumnName.get(variableName);
+      assert(column !== undefined, `Unknown input ${variableName}`);
+      evaluationContext.setValueForReference(variableName, column);
     });
   }
 
   protected override doExecuteTransform(
-    inputColumns: string[],
+    variableToColumnName: Map<string, PolarsInternal>,
     context: ExecutionContext,
   ): PolarsInternal | undefined {
     const inputDetails = this.getInputDetails();
@@ -112,7 +111,7 @@ export class PolarsTransformExecutor extends TransformExecutor<
 
     PolarsTransformExecutor.addInputColumnsToContext(
       inputDetails,
-      inputColumns,
+      variableToColumnName,
       context.evaluationContext,
     );
 
@@ -240,7 +239,7 @@ export class TsTransformExecutor extends TransformExecutor<
 
   private addVariablesToContext(
     inputDetailsList: PortDetails[],
-    columns: ReadonlyMap<string, TableColumn>,
+    columns: ReadonlyMap<string, TsTableColumn>,
     rowIndex: number,
     context: ExecutionContext,
   ) {
@@ -248,7 +247,7 @@ export class TsTransformExecutor extends TransformExecutor<
       const variableName = inputDetails.port.name;
 
       const column = columns.get(variableName);
-      assert(column !== undefined);
+      assert(column !== undefined, `Unknown input ${variableName}}`);
 
       const variableValue = column.nth(rowIndex);
       assert(variableValue != null);
