@@ -26,7 +26,7 @@ pipeline ElectricVehiclesPipeline {
   // of blocks. From there we can see a split into two
   // parallel sequences that load the data in to two
   // different sinks.
-  ElectricVehiclesHttpExtractor
+  ElectricVehiclesExtractor
     -> ElectricVehiclesTextFileInterpreter
     -> ElectricVehiclesCSVInterpreter
     -> ElectricVehiclesTableInterpreter
@@ -43,19 +43,13 @@ pipeline ElectricVehiclesPipeline {
     url: "https://data.wa.gov/api/views/f6w7-q2d2/rows.csv?accessType=DOWNLOAD";
   }
 
+	block ElectricVehiclesExtractor oftype LocalFileExtractor{
+		filePath: "/home/jonas/Downloads/Electric_Vehicle_Population_Data.csv";
+	}
+
   block ElectricVehiclesTextFileInterpreter oftype TextFileInterpreter { }
 
   block ElectricVehiclesCSVInterpreter oftype CSVInterpreter { }
-
-	// 5. This block describes the application of a transform function
-	// taking a column as input and adding another computed column.
-	// The applied transform function is defined below and referenced 
-	// by the "uses" property.
-	block ElectricRangeTransformer oftype TableTransformer {
-		inputColumns: ["Electric Range"];
-		outputColumn: "Electric Range (km)";
-		uses: MilesToKilometers;
-	}
 
   block ElectricVehiclesTableInterpreter oftype TableInterpreter {
     header: true;
@@ -92,7 +86,7 @@ pipeline ElectricVehiclesPipeline {
       "Electric Range"
     ];
     outputColumn: "Electric Range (km)";
-    use: MilesToKilometers;
+    uses: MilesToKilometers;
   }
 
   // 6. Here, we define a transform function, taking parameters
