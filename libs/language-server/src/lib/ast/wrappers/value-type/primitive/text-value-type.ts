@@ -44,6 +44,6 @@ Example: "Hello World"
   }
 
   override toPolarsDataType(): PlDType {
-    return PlDType.String;
+    return PlDType.Utf8;
   }
 }

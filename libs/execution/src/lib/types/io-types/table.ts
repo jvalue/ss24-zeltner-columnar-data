@@ -217,7 +217,6 @@ export class PolarsTable extends Table {
 
     const formattedColumns = this.df.columns.map((c) => `"${c}"`).join(',');
     const stmnt = `INSERT INTO "${tableName}" (${formattedColumns}) VALUES ${formattedValues}`;
-    context.logger.logInfo(stmnt);
     return stmnt;
   }
 
