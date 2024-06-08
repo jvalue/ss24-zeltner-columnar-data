@@ -5,6 +5,8 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
+import { type DataType as PlDType } from 'nodejs-polars';
+
 import { evaluateExpression } from '../../expressions/evaluate-expression';
 import { type EvaluationContext } from '../../expressions/evaluation-context';
 import { type InternalValueRepresentation } from '../../expressions/internal-value-representation';
@@ -112,8 +114,8 @@ export class AtomicValueType
     return false;
   }
 
-  override toPolarsDataType(): undefined {
-    return undefined;
+  override toPolarsDataType(): PlDType | undefined {
+    return this.getSupertype()?.toPolarsDataType();
   }
 }
 

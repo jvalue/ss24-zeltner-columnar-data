@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+// eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
 import * as R from '@jvalue/jayvee-execution';
@@ -59,13 +60,10 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
 
     const schema: Record<string, PlDType> = {};
     const columnNames = colDefs.map((colDef) => {
-      const dt = toPolarsDataTypeWithLogs(colDef.valueType, context.logger);
-      if (dt === undefined) {
-        throw new Error(
-          `${colDef.valueType.getName()} is not supported in tables`,
-        );
-      }
-      schema[colDef.columnName] = dt;
+      schema[colDef.columnName] = toPolarsDataTypeWithLogs(
+        colDef.valueType,
+        context.logger,
+      );
       return colDef.columnName;
     });
     return {

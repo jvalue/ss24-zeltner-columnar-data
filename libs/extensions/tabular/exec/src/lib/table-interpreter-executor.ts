@@ -27,7 +27,7 @@ import {
   type ValuetypeAssignment,
   rowIndexToString,
 } from '@jvalue/jayvee-language-server';
-import pl, { type DataType as PlDType } from 'nodejs-polars';
+import { type DataType as PlDType, pl } from 'nodejs-polars';
 
 export interface ColumnDefinitionEntry {
   sheetColumnIndex: number;
@@ -197,14 +197,15 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
 export function toPolarsDataTypeWithLogs(
   vt: ValueType,
   logger: R.Logger,
-): PlDType | undefined {
+): PlDType {
   const dt = vt.toPolarsDataType();
+  const defalt = pl.Utf8;
   if (dt === undefined) {
-    logger.logDebug(
-      `${vt.getName()} isnt primitive and thus not convertible to polars`,
+    logger.logErr(
+      `${vt.getName()} is niether primitive nor atomic and thus not yet supported. Attempting to use ${defalt.toString()}`,
     );
   }
-  return dt;
+  return dt ?? defalt;
 }
 
 @implementsStatic<BlockExecutorClass>()
@@ -230,9 +231,10 @@ export class PolarsTableInterpreterExecutor extends TableInterpeter {
     columnEntry: ColumnDefinitionEntry,
     context: ExecutionContext,
   ): pl.Series {
-    const dtype =
-      toPolarsDataTypeWithLogs(columnEntry.valueType, context.logger) ||
-      pl.String;
+    const dtype = toPolarsDataTypeWithLogs(
+      columnEntry.valueType,
+      context.logger,
+    );
     const cData = rows.map((row) => {
       const cell = row[columnEntry.sheetColumnIndex];
       if (cell === undefined) {
