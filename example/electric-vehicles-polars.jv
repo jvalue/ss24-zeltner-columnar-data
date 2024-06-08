@@ -27,8 +27,6 @@ pipeline ElectricVehiclesPipeline {
   // parallel sequences that load the data in to two
   // different sinks.
   ElectricVehiclesExtractor
-    -> ElectricVehiclesTextFileInterpreter
-    -> ElectricVehiclesCSVInterpreter
     -> ElectricVehiclesTableInterpreter
     -> ElectricRangeTransformer;
 
@@ -39,11 +37,7 @@ pipeline ElectricVehiclesPipeline {
 		filePath: "/home/jonas/Downloads/Electric_Vehicle_Population_Data.csv";
 	}
 
-  block ElectricVehiclesTextFileInterpreter oftype TextFileInterpreter { }
-
-  block ElectricVehiclesCSVInterpreter oftype CSVInterpreter { }
-
-  block ElectricVehiclesTableInterpreter oftype TableInterpreter {
+  block ElectricVehiclesTableInterpreter oftype FileToTableInterpreter {
     header: true;
     columns: [
       // 4. Here, a user-deifned value type is used to describe this column.
@@ -97,6 +91,7 @@ pipeline ElectricVehiclesPipeline {
     table: "ElectricVehiclePopulationData";
     file: "./electric-vehicles.sqlite";
   }
+
 }
 
 // 9. Below the pipeline, we model user-define value types.
