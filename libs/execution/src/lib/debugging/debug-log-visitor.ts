@@ -35,7 +35,7 @@ export class DebugLogVisitor implements IoTypeVisitor<void> {
     if (this.debugGranularity === 'minimal') {
       return;
     }
-    this.log(table.df.toString());
+    this.log(table.toString());
   }
 
   visitTsTable(table: TsTable): void {
@@ -51,7 +51,7 @@ export class DebugLogVisitor implements IoTypeVisitor<void> {
     const headers = table
       .getColumns()
       .map((column) => {
-        return `${column.name} (${column.getValueType().getName()})`;
+        return `${column.name} (${column.valueType.getName()})`;
       })
       .join(' | ');
     this.log(`[Header] ${headers}`);

@@ -128,7 +128,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
   ): PolarsTable {
     context.logger.logDebug(JSON.stringify(options.schema));
     const df = pl.readCSV(content, options);
-    return new PolarsTable(df);
+    return new PolarsTable(df, context.valueTypeProvider);
   }
 
   protected deriveColumnDefinitionEntriesWithoutHeader(

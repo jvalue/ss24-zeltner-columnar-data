@@ -9,11 +9,12 @@ import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   IOType,
   type InternalValueRepresentation,
+  type PolarsInternal,
   type ValueType,
   type ValueTypeProvider,
 } from '@jvalue/jayvee-language-server';
 import { zipWith } from 'fp-ts/lib/Array.js';
-import { pl } from 'nodejs-polars';
+import { type pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../../execution-context';
 import {
@@ -81,7 +82,10 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
 }
 
 export class PolarsTable extends Table {
-  public constructor(public df: pl.DataFrame = pl.DataFrame()) {
+  public constructor(
+    private df: pl.DataFrame,
+    private valueTypeProvider: ValueTypeProvider,
+  ) {
     super();
   }
 
@@ -117,16 +121,13 @@ export class PolarsTable extends Table {
     return stmnt;
   }
 
-  override generateCreateTableStatement(
-    tableName: string,
-    context: ExecutionContext,
-  ): string {
+  override generateCreateTableStatement(tableName: string): string {
     const columnTypeVisitor = new SQLColumnTypeVisitor();
 
     const columnStatements = this.getColumns().map((column) => {
-      return `"${column.getName()}" ${column
-        .getValueType(context.valueTypeProvider)
-        .acceptVisitor(columnTypeVisitor)}`;
+      return `"${column.name}" ${column.valueType.acceptVisitor(
+        columnTypeVisitor,
+      )}`;
     });
 
     return `CREATE TABLE IF NOT EXISTS "${tableName}" (${columnStatements.join(
@@ -135,14 +136,14 @@ export class PolarsTable extends Table {
   }
 
   override withColumn(column: PolarsTableColumn): PolarsTable {
-    const ndf = this.df.withColumn(column.getSeries());
+    const ndf = this.df.withColumn(column.series);
 
-    return new PolarsTable(ndf);
+    return new PolarsTable(ndf, this.valueTypeProvider);
   }
 
-  withColumnByExpr(expr: pl.Expr): PolarsTable {
+  withColumnFromInternal(expr: PolarsInternal): PolarsTable {
     const ndf = this.df.withColumn(expr);
-    return new PolarsTable(ndf);
+    return new PolarsTable(ndf, this.valueTypeProvider);
   }
 
   override getNumberOfRows(): number {
@@ -165,14 +166,14 @@ export class PolarsTable extends Table {
   override getColumns(): readonly PolarsTableColumn[] {
     const seriess = this.df.getColumns();
     return seriess.map((s) => {
-      return new PolarsTableColumn(s);
+      return new PolarsTableColumn(s, this.valueTypeProvider);
     });
   }
 
   override getColumn(name: string): PolarsTableColumn | undefined {
     try {
       const s = this.df.getColumn(name);
-      return new PolarsTableColumn(s);
+      return new PolarsTableColumn(s, this.valueTypeProvider);
     } catch {
       return undefined;
     }
@@ -187,7 +188,7 @@ export class PolarsTable extends Table {
   }
 
   override clone(): PolarsTable {
-    return new PolarsTable(this.df.clone());
+    return new PolarsTable(this.df.clone(), this.valueTypeProvider);
   }
 
   override acceptVisitor<R>(visitor: IoTypeVisitor<R>): R {
@@ -201,6 +202,10 @@ export class PolarsTable extends Table {
   override isTypescript(): this is TsTable {
     return false;
   }
+
+  override toString(): string {
+    return this.df.toString();
+  }
 }
 
 export class TsTable extends Table {
@@ -212,7 +217,7 @@ export class TsTable extends Table {
   }
 
   override withColumn(column: TsTableColumn): TsTable {
-    assert(column.values.length === this.numberOfRows);
+    assert(column.length === this.numberOfRows);
     const nt = this.clone();
     nt.columns.set(column.name, column);
     return nt;
@@ -242,23 +247,23 @@ export class TsTable extends Table {
       assert(column !== undefined);
 
       assert(column.valueType.isInternalValueRepresentation(value));
-      column.values.push(value);
+      column.push(value);
     });
 
     this.numberOfRows++;
   }
 
   addColumn(name: string, column: TsTableColumn): void {
-    assert(column.values.length === this.numberOfRows);
+    assert(column.length === this.numberOfRows);
     column.name = name;
     this.columns.set(name, column);
   }
 
-  dropRow(rowId: number): void {
-    assert(rowId < this.numberOfRows);
+  dropRow(rowIdx: number): void {
+    assert(rowIdx < this.numberOfRows);
 
     this.columns.forEach((column) => {
-      column.values.splice(rowId, 1);
+      column.drop(rowIdx);
     });
 
     this.numberOfRows--;
@@ -322,16 +327,14 @@ export class TsTable extends Table {
         const formattedValue =
           entry === undefined
             ? 'NULL'
-            : column.getValueType().acceptVisitor(valueRepresentationVisitor)(
-                entry,
-              );
+            : column.valueType.acceptVisitor(valueRepresentationVisitor)(entry);
 
         rowValues.push(formattedValue);
       }
       formattedRowValues.push(`(${rowValues.join(',')})`);
     }
 
-    const formattedColumns = columns.map((c) => `"${c.getName()}"`).join(',');
+    const formattedColumns = columns.map((c) => `"${c.name}"`).join(',');
 
     return `INSERT INTO "${tableName}" (${formattedColumns}) VALUES ${formattedRowValues.join(
       ', ',
@@ -343,9 +346,9 @@ export class TsTable extends Table {
 
     const columns = [...this.getColumns()];
     const columnStatements = columns.map((column) => {
-      return `"${column.getName()}" ${column
-        .getValueType()
-        .acceptVisitor(columnTypeVisitor)}`;
+      return `"${column.name}" ${column.valueType.acceptVisitor(
+        columnTypeVisitor,
+      )}`;
     });
 
     return `CREATE TABLE IF NOT EXISTS "${tableName}" (${columnStatements.join(

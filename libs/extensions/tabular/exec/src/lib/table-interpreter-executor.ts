@@ -223,7 +223,7 @@ export class PolarsTableInterpreterExecutor extends TableInterpeter {
       this.constructSeries(rows, cEntry, context),
     );
     const df = pl.DataFrame(series);
-    return new PolarsTable(df);
+    return new PolarsTable(df, context.valueTypeProvider);
   }
 
   private constructSeries(

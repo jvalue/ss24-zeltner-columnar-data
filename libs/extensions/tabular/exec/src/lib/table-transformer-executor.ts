@@ -38,15 +38,9 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
       );
 
       // log if output column type changes
-      if (
-        !outputColumn
-          .getValueType(context.valueTypeProvider)
-          .equals(transformOutputDetails.valueType)
-      ) {
+      if (!outputColumn.valueType.equals(transformOutputDetails.valueType)) {
         context.logger.logInfo(
-          `Column "${outputColumnName}" will change its type from ${outputColumn
-            .getValueType(context.valueTypeProvider)
-            .getName()} to ${transformOutputDetails.valueType.getName()}`,
+          `Column "${outputColumnName}" will change its type from ${outputColumn.valueType.getName()} to ${transformOutputDetails.valueType.getName()}`,
         );
       }
     }
@@ -103,21 +97,17 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       assert(matchingInputDetails !== undefined);
 
       if (
-        !inputColumn
-          .getValueType(context.valueTypeProvider)
-          .isConvertibleTo(matchingInputDetails.valueType)
+        !inputColumn.valueType.isConvertibleTo(matchingInputDetails.valueType)
       ) {
         return R.err({
-          message: `Type ${inputColumn
-            .getValueType(context.valueTypeProvider)
-            .getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
+          message: `Type ${inputColumn.valueType.getName()} of column "${inputColumnName}" is not convertible to type ${matchingInputDetails.valueType.getName()}`,
           diagnostic: {
             node: context.getOrFailProperty('uses'),
           },
         });
       }
       const variableName = matchingInputDetails.port.name;
-      variableToColumnMap.set(variableName, pl.col(inputColumn.getName()));
+      variableToColumnMap.set(variableName, pl.col(inputColumn.name));
     }
     return R.ok(variableToColumnMap);
   }
@@ -185,8 +175,10 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       });
     }
 
-    const ndf = inputTable.df.withColumn(expr.alias(outputColumnName));
-    return R.ok(new R.PolarsTable(ndf));
+    const newTable = inputTable.withColumnFromInternal(
+      expr.alias(outputColumnName),
+    );
+    return R.ok(newTable);
   }
 }
 
