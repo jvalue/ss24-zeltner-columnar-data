@@ -11,6 +11,7 @@
     "generate": "nx run language-server:generate",
     "example:cars": "nx run interpreter:run -d example/cars.jv -dg peek",
     "example:cars-polars": "nx run interpreter:run -d example/cars.jv -dg peek --use-polars",
+    "example:no-transformation-ts-polars": "nx run interpreter:run -d example/no-transformation-ts.jv -dg peek --use-polars",
     "example:testing": "nx run interpreter:run -d example/testing.jv -dg peek",
     "example:testing-polars": "nx run interpreter:run -d example/testing.jv -dg peek --use-polars",
     "example:one-block-polars": "nx run interpreter:run -d example/one-block.jv -dg peek --use-polars",

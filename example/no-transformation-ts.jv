@@ -1,0 +1,55 @@
+pipeline CarsPipeline {
+
+	LiquorExtractor
+		-> LiquorFileInterpreter
+		-> LiquorCSVInterpreter
+		-> LiquorTableInterpreter
+		-> CarsLoader;
+
+
+	block LiquorExtractor oftype LocalFileExtractor {
+		filePath: "/home/jonas/Code/uni/ss24-zeltner-columnar-data/example/data/max.csv";
+	}
+
+	block LiquorFileInterpreter oftype TextFileInterpreter { }
+
+	block LiquorCSVInterpreter oftype CSVInterpreter {
+		enclosing: '"';
+	}
+
+	block LiquorTableInterpreter oftype TableInterpreter {
+		header: true;
+		columns: [
+			"Invoice/ItemNumber" oftype text,
+			"Date" oftype text,
+			"Store Number" oftype integer,
+			"Store Name" oftype text,
+			"Address" oftype text,
+			"City" oftype text,
+			"Zip Code" oftype integer,
+			"Store Location" oftype text,
+			"County Number" oftype integer,
+			"County" oftype text,
+			"Category" oftype text,
+			"Category Name" oftype text,
+			"Vendor Number" oftype integer,
+			"Vendor Name" oftype text,
+			"Item Number" oftype integer,
+			"Item Description" oftype text,
+			"Pack" oftype integer,
+			"Bottle Volume (ml)" oftype integer,
+			"State Bottle Cost" oftype text,
+			"State Bottle Retail" oftype text,
+			"Bottles Sold" oftype integer,
+			"State (Dollars)" oftype integer,
+			"Volume Sold (Liters)" oftype decimal,
+			"Volume Sold (Gallons)" oftype decimal,
+		];
+	}
+
+	block CarsLoader oftype SQLiteLoader {
+		table: "Cars";
+		file: "./cars.sqlite";
+	}
+}
+
