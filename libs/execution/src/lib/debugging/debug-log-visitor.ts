@@ -43,13 +43,10 @@ export class DebugLogVisitor implements IoTypeVisitor<void> {
       return;
     }
 
-    const numberOfRows = table.getNumberOfRows();
-    this.log(
-      `Table with ${numberOfRows} rows and ${table.getNumberOfColumns()} columns.`,
-    );
+    const numberOfRows = table.nRows;
+    this.log(`Table with ${numberOfRows} rows and ${table.nColumns} columns.`);
 
-    const headers = table
-      .getColumns()
+    const headers = table.columns
       .map((column) => {
         return `${column.name} (${column.valueType.getName()})`;
       })

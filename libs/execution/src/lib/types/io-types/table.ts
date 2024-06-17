@@ -4,6 +4,7 @@
 
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
+import { type Writable } from 'node:stream';
 
 import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
@@ -14,7 +15,7 @@ import {
   type ValueTypeProvider,
 } from '@jvalue/jayvee-language-server';
 import { zipWith } from 'fp-ts/lib/Array.js';
-import { type pl } from 'nodejs-polars';
+import { type WriteIPCOptions, type pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../../execution-context';
 import {
@@ -54,10 +55,10 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
   public readonly ioType = IOType.TABLE;
 
   abstract withColumn(column: TableColumn): Table;
-  abstract getNumberOfRows(): number;
-  abstract getNumberOfColumns(): number;
+  abstract get nRows(): number;
+  abstract get nColumns(): number;
   abstract hasColumn(name: string): boolean;
-  abstract getColumns(): ReadonlyArray<TableColumn>;
+  abstract get columns(): ReadonlyArray<TableColumn>;
   abstract getColumn(name: string): TableColumn | undefined;
   abstract getRow(id: number): TableRow;
   abstract clone(): Table;
@@ -89,29 +90,24 @@ export class PolarsTable extends Table {
     super();
   }
 
-  getTypes(vts: ValueTypeProvider): ValueType[] {
-    return this.df.dtypes.map((dt) => vts.fromPolarsDType(dt));
+  getTypes(): ValueType[] {
+    return this.df.dtypes.map((dt) =>
+      this.valueTypeProvider.fromPolarsDType(dt),
+    );
   }
 
-  override generateInsertValuesStatement(
-    tableName: string,
-    context: ExecutionContext,
-  ): string {
+  override generateInsertValuesStatement(tableName: string): string {
     const valueRepresentationVisitor = new SQLValueRepresentationVisitor();
 
     const formattedValues = this.df
       .rows()
       .map((row) => {
-        const rowValues = zipWith(
-          row,
-          this.getTypes(context.valueTypeProvider),
-          (e, t) => {
-            if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(e)) {
-              return t.acceptVisitor(valueRepresentationVisitor)(e);
-            }
-            return 'NULL';
-          },
-        );
+        const rowValues = zipWith(row, this.getTypes(), (e, t) => {
+          if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(e)) {
+            return t.acceptVisitor(valueRepresentationVisitor)(e);
+          }
+          return 'NULL';
+        });
         return `(${rowValues.join(',')})`;
       })
       .join(', ');
@@ -124,7 +120,7 @@ export class PolarsTable extends Table {
   override generateCreateTableStatement(tableName: string): string {
     const columnTypeVisitor = new SQLColumnTypeVisitor();
 
-    const columnStatements = this.getColumns().map((column) => {
+    const columnStatements = this.columns.map((column) => {
       return `"${column.name}" ${column.valueType.acceptVisitor(
         columnTypeVisitor,
       )}`;
@@ -146,11 +142,11 @@ export class PolarsTable extends Table {
     return new PolarsTable(ndf, this.valueTypeProvider);
   }
 
-  override getNumberOfRows(): number {
+  override get nRows(): number {
     return this.df.height;
   }
 
-  override getNumberOfColumns(): number {
+  override get nColumns(): number {
     return this.df.width;
   }
 
@@ -163,7 +159,7 @@ export class PolarsTable extends Table {
     }
   }
 
-  override getColumns(): readonly PolarsTableColumn[] {
+  override get columns(): readonly PolarsTableColumn[] {
     const seriess = this.df.getColumns();
     return seriess.map((s) => {
       return new PolarsTableColumn(s, this.valueTypeProvider);
@@ -206,12 +202,19 @@ export class PolarsTable extends Table {
   override toString(): string {
     return this.df.toString();
   }
+
+  writeIpc(options?: WriteIPCOptions): Buffer {
+    return this.df.writeIPC(options);
+  }
+  writeIpcTo(destination: string | Writable, options?: WriteIPCOptions): void {
+    this.df.writeIPC(destination, options);
+  }
 }
 
 export class TsTable extends Table {
   public constructor(
     private numberOfRows = 0,
-    private columns = new Map<string, TsTableColumn>(),
+    private _columns = new Map<string, TsTableColumn>(),
   ) {
     super();
   }
@@ -219,7 +222,7 @@ export class TsTable extends Table {
   override withColumn(column: TsTableColumn): TsTable {
     assert(column.length === this.numberOfRows);
     const nt = this.clone();
-    nt.columns.set(column.name, column);
+    nt._columns.set(column.name, column);
     return nt;
   }
 
@@ -231,8 +234,8 @@ export class TsTable extends Table {
   addRow(row: TableRowMap): void {
     const rowLength = Object.keys(row).length;
     assert(
-      rowLength === this.columns.size,
-      `Added row has the wrong dimension (expected: ${this.columns.size}, actual: ${rowLength})`,
+      rowLength === this._columns.size,
+      `Added row has the wrong dimension (expected: ${this.nColumns}, actual: ${rowLength})`,
     );
     if (rowLength === 0) {
       return;
@@ -243,7 +246,7 @@ export class TsTable extends Table {
     );
 
     Object.entries(row).forEach(([columnName, value]) => {
-      const column = this.columns.get(columnName);
+      const column = this._columns.get(columnName);
       assert(column !== undefined);
 
       assert(column.valueType.isInternalValueRepresentation(value));
@@ -256,7 +259,7 @@ export class TsTable extends Table {
   addColumn(name: string, column: TsTableColumn): void {
     assert(column.length === this.numberOfRows);
     column.name = name;
-    this.columns.set(name, column);
+    this._columns.set(name, column);
   }
 
   dropRow(rowIdx: number): void {
@@ -277,28 +280,28 @@ export class TsTable extends Table {
       });
   }
 
-  override getNumberOfRows(): number {
+  override get nRows(): number {
     return this.numberOfRows;
   }
 
-  override getNumberOfColumns(): number {
-    return this.columns.size;
+  override get nColumns(): number {
+    return this._columns.size;
   }
 
   override hasColumn(name: string): boolean {
-    return this.columns.has(name);
+    return this._columns.has(name);
   }
 
-  override getColumns(): readonly TsTableColumn[] {
-    return [...this.columns.values()];
+  override get columns(): readonly TsTableColumn[] {
+    return [...this._columns.values()];
   }
 
   override getColumn(name: string): TsTableColumn | undefined {
-    return this.columns.get(name);
+    return this._columns.get(name);
   }
 
   getRow(rowId: number): InternalValueRepresentation[] {
-    const numberOfRows = this.getNumberOfRows();
+    const numberOfRows = this.nRows;
     if (rowId >= numberOfRows) {
       throw new Error(
         `Trying to access table row ${rowId} (of ${numberOfRows} rows)`,
@@ -317,9 +320,9 @@ export class TsTable extends Table {
   override generateInsertValuesStatement(tableName: string): string {
     const valueRepresentationVisitor = new SQLValueRepresentationVisitor();
 
-    const columns = this.getColumns();
+    const columns = this.columns;
     const formattedRowValues: string[] = [];
-    for (let rowIndex = 0; rowIndex < this.getNumberOfRows(); ++rowIndex) {
+    for (let rowIndex = 0; rowIndex < this.nRows; ++rowIndex) {
       const rowValues: string[] = [];
       for (const column of columns) {
         const entry = column.nth(rowIndex);
@@ -344,7 +347,7 @@ export class TsTable extends Table {
   override generateCreateTableStatement(tableName: string): string {
     const columnTypeVisitor = new SQLColumnTypeVisitor();
 
-    const columns = [...this.getColumns()];
+    const columns = [...this.columns];
     const columnStatements = columns.map((column) => {
       return `"${column.name}" ${column.valueType.acceptVisitor(
         columnTypeVisitor,

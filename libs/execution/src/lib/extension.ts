@@ -37,6 +37,9 @@ export abstract class JayveeExecExtension {
         ? 'PolarsTableTransformer'
         : 'TsTableTransformer';
     }
+    if (blockTypeName === 'SQLiteLoader') {
+      blockTypeName = usePolars ? 'PolarsSQLiteLoader' : 'TsSQLiteLoader';
+    }
     logger.logDebug(`Trying to find executor for ${blockTypeName}`);
 
     return this.getBlockExecutors().find(

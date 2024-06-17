@@ -7,10 +7,18 @@ import {
   JayveeExecExtension,
 } from '@jvalue/jayvee-execution';
 
-import { PostgresLoaderExecutor, SQLiteLoaderExecutor } from './lib';
+import {
+  PolarsSQLiteLoaderExecutor,
+  PostgresLoaderExecutor,
+  TsSQLiteLoaderExecutor,
+} from './lib';
 
 export class RdbmsExecExtension extends JayveeExecExtension {
   getBlockExecutors(): BlockExecutorClass[] {
-    return [PostgresLoaderExecutor, SQLiteLoaderExecutor];
+    return [
+      PostgresLoaderExecutor,
+      PolarsSQLiteLoaderExecutor,
+      TsSQLiteLoaderExecutor,
+    ];
   }
 }

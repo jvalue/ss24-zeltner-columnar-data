@@ -116,7 +116,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
       context,
     );
     context.logger.logDebug(
-      `Validation completed, the resulting table has ${resultingTable.getNumberOfRows()} row(s) and ${resultingTable.getNumberOfColumns()} column(s)`,
+      `Validation completed, the resulting table has ${resultingTable.nRows} row(s) and ${resultingTable.nColumns} column(s)`,
     );
     return R.ok(resultingTable);
   }

@@ -275,7 +275,7 @@ export class TsTableTransformerExecutor extends TableTransformerExecutor {
     const transformResult = executor.executeTransform(
       {
         columns: variableToColumnMap,
-        numberOfRows: inputTable.getNumberOfRows(),
+        numberOfRows: inputTable.nRows,
       },
       context,
     );
