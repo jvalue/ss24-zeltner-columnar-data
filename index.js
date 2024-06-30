@@ -234,6 +234,6 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { generateInsertTable } = nativeBinding
+const { loadSqlite } = nativeBinding
 
-module.exports.generateInsertTable = generateInsertTable
+module.exports.loadSqlite = loadSqlite
