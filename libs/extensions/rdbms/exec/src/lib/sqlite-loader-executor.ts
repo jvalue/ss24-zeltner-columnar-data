@@ -13,6 +13,7 @@ import {
   implementsStatic,
 } from '@jvalue/jayvee-execution';
 import { IOType } from '@jvalue/jayvee-language-server';
+import { loadSqlite } from 'bach-napi-test';
 import sqlite3 from 'sqlite3';
 
 export abstract class SQLiteLoaderExecutor<
@@ -65,6 +66,7 @@ export abstract class SQLiteLoaderExecutor<
 export class PolarsSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTable> {
   public static readonly type = 'PolarsSQLiteLoader';
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   protected override async executeLoad(
     table: R.PolarsTable,
     file: string,
@@ -72,28 +74,10 @@ export class PolarsSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTab
     dropTable: boolean,
     context: R.ExecutionContext,
   ): Promise<R.Result<R.None>> {
-    let db: sqlite3.Database | undefined;
     try {
-      context.logger.logDebug(`Opening database file ${file}`);
-      db = new sqlite3.Database(file);
-
-      if (dropTable) {
-        context.logger.logDebug(
-          `Dropping previous table "${tableName}" if it exists`,
-        );
-        await this.runQuery(db, Table.generateDropTableStatement(tableName));
-      }
-
-      context.logger.logDebug(`Creating table "${tableName}"`);
-      await this.runQuery(db, table.generateCreateTableStatement(tableName));
-      context.logger.logDebug(
-        `Inserting ${table.nRows} row(s) into table "${tableName}"`,
-      );
-      await this.runQuery(db, table.generateInsertValuesStatement(tableName));
-
-      context.logger.logDebug(
-        `The data was successfully loaded into the database`,
-      );
+      const ipcName = 'df.ipc';
+      table.writeIpcTo(ipcName);
+      loadSqlite(ipcName, tableName, file, dropTable);
       return R.ok(NONE);
     } catch (err: unknown) {
       return R.err({
@@ -102,8 +86,6 @@ export class PolarsSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTab
         }`,
         diagnostic: { node: context.getCurrentNode(), property: 'name' },
       });
-    } finally {
-      db?.close();
     }
   }
 }

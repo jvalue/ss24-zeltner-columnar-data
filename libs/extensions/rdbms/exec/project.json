@@ -4,7 +4,11 @@
   "sourceRoot": "libs/extensions/rdbms/exec/src",
   "projectType": "library",
   "targets": {
-    "build": {},
+    "build": {
+      "options": {
+        "external": ["bach-napi-test"]
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"]
