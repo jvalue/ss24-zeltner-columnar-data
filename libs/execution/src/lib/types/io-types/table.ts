@@ -361,10 +361,8 @@ export class TsTable extends Table {
 
   override clone(): TsTable {
     const newColumns: Map<string, TsTableColumn> = new Map();
-    this.columns.forEach((column, name) => {
-      const clonedName: unknown = JSON.parse(JSON.stringify(name));
-      assert(typeof clonedName === 'string');
-      newColumns.set(clonedName, column.clone());
+    this._columns.forEach((column, name) => {
+      newColumns.set(name, column.clone());
     });
 
     return new TsTable(this.numberOfRows, newColumns);

@@ -27,6 +27,7 @@
     "@docusaurus/theme-mermaid": "2.4.1",
     "@mdx-js/react": "^1.6.22",
     "assert": "^2.0.0",
+    "bach-napi-test": "file:../bach-napi-test",
     "chalk": "^4.1.2",
     "clsx": "^1.2.1",
     "commander": "^8.0.0",
