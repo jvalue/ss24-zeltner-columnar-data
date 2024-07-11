@@ -103,11 +103,13 @@ fn generate_columns(df: &DataFrame) -> String {
 fn generate_values(df: &DataFrame) -> Vec<String> {
   let columns = df
     .iter()
-    .par_bridge()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|ser| {
       ser
         .iter()
-        .par_bridge()
+        .collect::<Vec<_>>()
+        .into_par_iter()
         .map(|cell| cell_sql(cell))
         .collect::<Vec<_>>()
     })
