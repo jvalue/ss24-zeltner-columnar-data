@@ -37,11 +37,10 @@ pub fn load_sqlite(
 
   if drop_table {
     println!("Dropping previous table {table_name} if it exists");
-    conn
-      .execute(&format!("DROP TABLE {table_name}"), [])
-      .map_err(|e| {
-        napi::Error::<Status>::from_reason(format!("Could not drop table {table_name}: {e}"))
-      })?;
+    let res = conn.execute(&format!("DROP TABLE {table_name}"), []);
+    if let Err(e) = res {
+      eprintln!("Did not drop table {table_name}: {e}")
+    }
   }
 
   println!("Creating table {table_name}");
