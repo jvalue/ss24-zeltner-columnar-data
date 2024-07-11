@@ -94,7 +94,9 @@ export async function executeBlock(
 
   const blockExecutor = executionContext.executionExtension.createBlockExecutor(
     block,
-    executionContext.runOptions.usePolars,
+    executionContext.runOptions.usePolars ||
+      executionContext.runOptions.useRusqlite,
+    executionContext.runOptions.useRusqlite,
     executionContext.logger,
   );
 

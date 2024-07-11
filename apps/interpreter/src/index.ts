@@ -67,6 +67,10 @@ program
     'WARNING: THIS IS EXPERIMENTAL AND PROBABLY BROKEN: Use the experimental polars backend instead of the typescript native implementation.',
     false,
   )
+  .option(
+    '--use-rusqlite',
+    'WARNING: THIS IS EXPERIMENTAL AND PROBABLY BROKEN: Use the experimental polars backend and the experimental rust sqlite loader.',
+  )
   .description('Run a Jayvee file')
   .action(runAction);
 
