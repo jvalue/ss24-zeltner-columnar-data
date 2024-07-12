@@ -1,0 +1,63 @@
+publish transform One {
+	to one oftype integer;
+	one: 1;
+}
+
+publish transform AddDec {
+	from summand1 oftype decimal;
+	from summand2 oftype decimal;
+	to sum oftype decimal;
+	sum: summand1 + summand2;
+}
+
+publish transform AddInt {
+	from summand1 oftype integer;
+	from summand2 oftype integer;
+	to sum oftype integer;
+	sum: summand1 + summand2;
+}
+
+publish transform MulDec {
+	from factor1 oftype decimal;
+	from factor2 oftype decimal;
+	to product oftype decimal;
+	product: factor1 * factor2;
+}
+
+publish transform MulInt {
+	from factor1 oftype integer;
+	from factor2 oftype integer;
+	to product oftype integer;
+	product: factor1 * factor2;
+}
+
+publish transform PowDec {
+	from base oftype decimal;
+	from exponent oftype decimal;
+	to power oftype decimal;
+	power: base pow exponent;
+}
+
+publish transform PowInt {
+	from base oftype integer;
+	from exponent oftype integer;
+	to power oftype decimal;
+	power: base pow exponent;
+}
+
+publish transform RootDec {
+	from nth oftype decimal;
+	from n oftype decimal;
+	to roo oftype decimal;
+	roo: nth root n;
+}
+
+publish transform RootInt {
+	from nth oftype integer;
+	from n oftype integer;
+	to roo oftype decimal;
+	roo: nth root n;
+}
+
+
+

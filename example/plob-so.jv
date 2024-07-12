@@ -2,8 +2,14 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+use * from './shared.jv';
+
 pipeline CarsPipeline {
 	LiquorTableExtractor
+		-> AddColmumnOne
+		-> BitPlusVol
+		-> UpdatePHLevel
+		-> SoldSqrt
 		-> LiquorLoader;
 
 	block LiquorTableExtractor oftype LocalFileToTableExtractor {
@@ -32,6 +38,50 @@ pipeline CarsPipeline {
 			"Loss_During_Fermentation" oftype decimal,
 			"Loss_During_Bottling_Kegging" oftype decimal,
 		];
+	}
+
+
+	block AddColmumnOne oftype TableTransformer {
+		inputColumns: [ ];
+		outputColumn: "One";
+		uses: One;
+	}
+
+	block BitPlusVol oftype TableTransformer {
+		inputColumns: [
+			"Bitterness",
+			"Volume_Produced"
+		];
+		outputColumn: "Bitterness plus Volume_Produced";
+		uses: AddInt;
+	}
+
+	transform TimesTenThousand {
+		from n oftype decimal;
+		to nn oftype decimal;
+		nn: n * 10000;
+	}
+
+	block UpdatePHLevel oftype TableTransformer {
+		inputColumns: [
+			"pH_Level",
+		];
+		outputColumn: "pH_Level";
+		uses: TimesTenThousand;
+	}
+
+	transform Sqrt {
+		from n oftype decimal;
+		to nn oftype decimal;
+		nn: sqrt n;
+	}
+
+	block SoldSqrt oftype TableTransformer {
+		inputColumns: [
+			"Total_Sales"
+		];
+		outputColumn: "sqrt(sales)";
+		uses: Sqrt;
 	}
 
 	block LiquorLoader oftype SQLiteLoader {
