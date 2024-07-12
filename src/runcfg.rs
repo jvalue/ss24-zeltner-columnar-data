@@ -8,13 +8,30 @@ use std::{
 
 use crate::{Backend, TransformAmount};
 
-fn source(repo: &Path, n_lines: usize) -> PathBuf {
+fn source(repo: &Path, n_lines: Option<usize>) -> PathBuf {
+    let mut src = repo.to_path_buf();
+    src.push("example/data/brewey_data_all.csv");
+
     let mut target_file = std::env::current_dir().expect("Cwd should be available");
-    target_file.push(format!("data/l-{n_lines}.csv"));
+    match n_lines {
+        None => {
+            target_file.push("data/l-all.csv");
+        }
+        Some(n) => {
+            target_file.push(format!("data/l-{n}.csv"));
+        }
+    };
 
     if target_file.exists() {
         return target_file;
     }
+    let n_lines = match n_lines {
+        Some(n) => n,
+        None => {
+            // fs::copy(src, &target_file).expect("Copy should work");
+            return target_file;
+        }
+    };
 
     let file = OpenOptions::new()
         .write(true)
@@ -23,8 +40,6 @@ fn source(repo: &Path, n_lines: usize) -> PathBuf {
         .open(&target_file)
         .unwrap();
 
-    let mut src = repo.to_path_buf();
-    src.push("example/data/brewey_data_all.csv");
     let lines = format!("--lines={}", n_lines + 1);
     Command::new("head")
         .arg(lines)
@@ -41,15 +56,18 @@ fn example(transformations: TransformAmount, backend: Backend) -> String {
     // HINT: returns something like example:plobrs-ma
 }
 
-fn destination(transformations: TransformAmount, backend: Backend, n_lines: usize) -> PathBuf {
+fn destination(
+    transformations: TransformAmount,
+    backend: Backend,
+    n_lines: Option<usize>,
+) -> PathBuf {
     let mut dst = std::env::current_dir().expect("Cwd should be available");
-    let sqlite_name = [
-        backend.example(),
-        transformations.example(),
-        &n_lines.to_string(),
-    ]
-    .join("-")
-        + ".sqlite";
+    dst.push("out/");
+    let n_str = match n_lines {
+        Some(n) => &n.to_string(),
+        None => "all",
+    };
+    let sqlite_name = [backend.example(), transformations.example(), n_str].join("-") + ".sqlite";
     dst.push(sqlite_name);
     dst
     // HINT: returns something like plobrs-ma-l.sqlite
@@ -60,19 +78,21 @@ pub struct Runcfg {
     repo: PathBuf,
     transformations: TransformAmount,
     backend: Backend,
-    n_lines: usize,
+    n_lines: Option<usize>,
     example: String,
     source: PathBuf,
     destination: PathBuf,
     show_output: bool,
+    hide_errors: bool,
 }
 impl Runcfg {
     pub fn new(
         repo: &Path,
         transformations: TransformAmount,
         backend: Backend,
-        n_lines: usize,
+        n_lines: Option<usize>,
         show_output: bool,
+        hide_errors: bool,
     ) -> Self {
         Self {
             repo: repo.to_path_buf(),
@@ -83,6 +103,7 @@ impl Runcfg {
             source: source(repo, n_lines),
             destination: destination(transformations, backend, n_lines),
             show_output,
+            hide_errors,
         }
     }
 
@@ -110,7 +131,7 @@ impl Runcfg {
         self.backend
     }
 
-    pub fn n_lines(&self) -> usize {
+    pub fn n_lines(&self) -> Option<usize> {
         self.n_lines
     }
 
@@ -118,7 +139,7 @@ impl Runcfg {
         self.show_output
     }
 
-    pub fn run(&self) -> Duration {
+    pub fn run(&self) -> (Duration, bool) {
         let src = format!("SRC={}", self.source.to_string_lossy());
         let dst = format!("DST={}", self.destination.to_string_lossy());
         let mut cmd = Command::new("npm");
@@ -127,12 +148,18 @@ impl Runcfg {
         if !self.show_output {
             cmd.stdout(Stdio::null());
         }
-
+        if self.hide_errors {
+            cmd.stderr(Stdio::null());
+        }
         // NOTE: https://stackoverflow.com/a/40953863
         let now = time::Instant::now();
         let mut child = cmd.spawn().expect("it should work");
-        child.wait().expect("no interrupts");
-        now.elapsed()
+        let out = child.wait().expect("no interrupts");
+        (now.elapsed(), out.success())
+    }
+
+    pub fn hide_errors(&self) -> bool {
+        self.hide_errors
     }
 }
 
@@ -143,7 +170,10 @@ impl Display for Runcfg {
             "{}-{}-{}",
             self.backend().example(),
             self.transformations().example(),
-            self.n_lines()
+            match self.n_lines() {
+                Some(n) => n.to_string(),
+                None => "all".to_string(),
+            }
         )
     }
 }

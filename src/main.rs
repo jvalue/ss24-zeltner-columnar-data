@@ -77,6 +77,10 @@ struct Cli {
     /// Show the models own output
     show_output: bool,
 
+    #[arg(long)]
+    /// Hide the models own errors
+    hide_errors: bool,
+
     #[arg(short, long)]
     /// A list of sizes for the dataset input.
     /// If omitted, all will be used.
@@ -168,6 +172,7 @@ impl Display for Sqldiff {
 fn main() {
     let Cli {
         show_output,
+        hide_errors,
         datasizes,
         backends,
         transformations,
@@ -175,7 +180,7 @@ fn main() {
     } = Cli::parse();
 
     let datasizes = if datasizes.is_empty() {
-        vec![3_601, 36_001, 3_600_001]
+        vec![0]
     } else {
         datasizes
     };
@@ -192,33 +197,36 @@ fn main() {
         transformations
     };
 
-    let runs = iproduct!(datasizes, transformations)
+    iproduct!(datasizes, transformations)
         .map(|(d, t)| {
+            let d = (d != 0).then_some(d);
             backends
                 .iter()
-                .map(|b| Runcfg::new(&repo, t, *b, d, show_output))
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-
-    runs.into_iter()
-        .map(|cfgs| {
-            cfgs.into_iter()
+                .map(|b| Runcfg::new(&repo, t, *b, d, show_output, hide_errors))
                 .map(|cfg| {
-                    let duration = cfg.run();
-                    (cfg, duration)
+                    let (duration, success) = cfg.run();
+                    (cfg, duration, success)
                 })
                 .collect::<Vec<_>>()
         })
         .for_each(|cfgs| {
-            cfgs.array_windows::<2>().for_each(|[(c1, _), (c2, _)]| {
-                let diff = Sqldiff::compare(c1.destination(), c2.destination());
-                if !diff.equal() {
-                    eprintln!("{c1} differs from {c2}: {diff}");
+            cfgs.array_windows::<2>()
+                .for_each(|[(c1, _, s1), (c2, _, s2)]| {
+                    if !s1 || !s2 {
+                        return;
+                    }
+                    let diff = Sqldiff::compare(c1.destination(), c2.destination());
+                    if !diff.equal() {
+                        eprintln!("{c1} differs from {c2}: {diff}");
+                    }
+                });
+            println!();
+            cfgs.into_iter().for_each(|(cfg, dur, suc)| {
+                if suc {
+                    println!("{cfg} took {} seconds", dur.as_secs_f64());
+                } else {
+                    eprintln!("FAIL: {cfg}");
                 }
-            });
-            cfgs.into_iter().for_each(|(cfg, dur)| {
-                println!("{cfg} took {} seconds", dur.as_secs_f64());
             })
         });
 }
