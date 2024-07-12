@@ -25,17 +25,20 @@
 *   ];
 * }
 */
-publish builtin blocktype FileToTableInterpreter {
-	input default oftype File;
+publish builtin blocktype LocalFileToTableExtractor {
+	input default oftype None;
 	output default oftype Table;
 	
+	/**
+	* The path to the file in the local file system to extract. Path can not traverse up the directory tree.
+	*/
+	property filePath oftype text;
 
-	
+
 	/**
 	* The encoding used for decoding the file contents.
 	*/
 	property encoding oftype text: 'utf-8';
-
 
 
 	/**

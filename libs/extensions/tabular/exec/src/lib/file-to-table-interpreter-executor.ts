@@ -43,7 +43,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
     super(IOType.FILE, IOType.TABLE);
   }
 
-  protected colsAndSchema(context: ExecutionContext): {
+  public static colsAndSchema(context: ExecutionContext): {
     columnNames: string[];
     schema: Record<string, PlDType>;
   } {
@@ -71,7 +71,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
       schema: schema,
     };
   }
-  protected csvOptions(context: ExecutionContext): Partial<ReadCsvOptions> {
+  public static csvOptions(context: ExecutionContext): Partial<ReadCsvOptions> {
     const header = context.getPropertyValue(
       'header',
       context.valueTypeProvider.Primitives.Boolean,
@@ -110,18 +110,19 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
   ): Promise<R.Result<R.Table>> {
     context.logger.logDebug(`Validating row(s) according to the column types`);
 
-    const resultingTable = this.constructAndValidateTable(
-      Buffer.from(file.content),
-      this.csvOptions(context),
-      context,
-    );
+    const resultingTable =
+      FileToTableInterpreterExecutor.constructAndValidateTable(
+        Buffer.from(file.content),
+        FileToTableInterpreterExecutor.csvOptions(context),
+        context,
+      );
     context.logger.logDebug(
       `Validation completed, the resulting table has ${resultingTable.nRows} row(s) and ${resultingTable.nColumns} column(s)`,
     );
     return R.ok(resultingTable);
   }
 
-  protected constructAndValidateTable(
+  public static constructAndValidateTable(
     content: Buffer,
     options: Partial<ReadCsvOptions>,
     context: ExecutionContext,
@@ -131,7 +132,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
     return new PolarsTable(df, context.valueTypeProvider);
   }
 
-  protected deriveColumnDefinitionEntriesWithoutHeader(
+  public static deriveColumnDefinitionEntriesWithoutHeader(
     columnDefinitions: ValuetypeAssignment[],
     context: ExecutionContext,
   ): ColumnDefinitionEntry[] {
@@ -151,7 +152,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
     );
   }
 
-  protected deriveColumnDefinitionEntriesFromHeader(
+  public static deriveColumnDefinitionEntriesFromHeader(
     columnDefinitions: ValuetypeAssignment[],
     headerRow: string[],
     context: ExecutionContext,
