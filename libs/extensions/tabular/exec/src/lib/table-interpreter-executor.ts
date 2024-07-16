@@ -202,7 +202,7 @@ export function toPolarsDataTypeWithLogs(
   const defalt = pl.Utf8;
   if (dt === undefined) {
     logger.logErr(
-      `${vt.getName()} is niether primitive nor atomic and thus not yet supported. Attempting to use ${defalt.toString()}`,
+      `${vt.getName()} is neither primitive nor atomic and thus not yet supported. Attempting to use ${defalt.toString()}`,
     );
   }
   return dt ?? defalt;
