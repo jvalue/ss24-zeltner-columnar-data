@@ -33,9 +33,6 @@ export class PolarsTableColumn extends TableColumn {
     valueType: ValueType | ValueTypeProvider,
   ) {
     super();
-    if (valueType instanceof ValueTypeProvider) {
-      valueType = valueType.fromPolarsDType(this._series.dtype);
-    }
     valueType =
       valueType instanceof ValueTypeProvider
         ? valueType.fromPolarsDType(this._series.dtype)
