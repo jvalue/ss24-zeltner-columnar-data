@@ -63,8 +63,8 @@ export abstract class SQLiteLoaderExecutor<
 }
 
 @implementsStatic<BlockExecutorClass>()
-export class PolarsSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTable> {
-  public static readonly type = 'PolarsSQLiteLoader';
+export class RustSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTable> {
+  public static readonly type = 'RustSQLiteLoader';
 
   // eslint-disable-next-line @typescript-eslint/require-await
   protected override async executeLoad(
@@ -86,6 +86,54 @@ export class PolarsSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTab
         }`,
         diagnostic: { node: context.getCurrentNode(), property: 'name' },
       });
+    }
+  }
+}
+
+@implementsStatic<BlockExecutorClass>()
+export class PolarsSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTable> {
+  public static readonly type = 'PolarsSQLiteLoader';
+
+  protected override async executeLoad(
+    table: R.PolarsTable,
+    file: string,
+    tableName: string,
+    dropTable: boolean,
+    context: ExecutionContext,
+  ): Promise<R.Result<None>> {
+    let db: sqlite3.Database | undefined;
+
+    try {
+      context.logger.logDebug(`Opening database file ${file}`);
+      db = new sqlite3.Database(file);
+
+      if (dropTable) {
+        context.logger.logDebug(
+          `Dropping previous table "${tableName}" if it exists`,
+        );
+        await this.runQuery(db, Table.generateDropTableStatement(tableName));
+      }
+
+      context.logger.logDebug(`Creating table "${tableName}"`);
+      await this.runQuery(db, table.generateCreateTableStatement(tableName));
+      context.logger.logDebug(
+        `Inserting ${table.nRows} row(s) into table "${tableName}"`,
+      );
+      await this.runQuery(db, table.generateInsertValuesStatement(tableName));
+
+      context.logger.logDebug(
+        `The data was successfully loaded into the database`,
+      );
+      return R.ok(NONE);
+    } catch (err: unknown) {
+      return R.err({
+        message: `Could not write to sqlite database: ${
+          err instanceof Error ? err.message : JSON.stringify(err)
+        }`,
+        diagnostic: { node: context.getCurrentNode(), property: 'name' },
+      });
+    } finally {
+      db?.close();
     }
   }
 }

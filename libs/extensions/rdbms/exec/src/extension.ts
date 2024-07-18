@@ -10,6 +10,7 @@ import {
 import {
   PolarsSQLiteLoaderExecutor,
   PostgresLoaderExecutor,
+  RustSQLiteLoaderExecutor,
   TsSQLiteLoaderExecutor,
 } from './lib';
 
@@ -18,6 +19,7 @@ export class RdbmsExecExtension extends JayveeExecExtension {
     return [
       PostgresLoaderExecutor,
       PolarsSQLiteLoaderExecutor,
+      RustSQLiteLoaderExecutor,
       TsSQLiteLoaderExecutor,
     ];
   }

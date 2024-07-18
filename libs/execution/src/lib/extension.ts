@@ -39,7 +39,13 @@ export abstract class JayveeExecExtension {
         : 'TsTableTransformer';
     }
     if (blockTypeName === 'SQLiteLoader') {
-      blockTypeName = useRusqlite ? 'PolarsSQLiteLoader' : 'TsSQLiteLoader';
+      if (useRusqlite) {
+        blockTypeName = 'RustSQLiteLoader';
+      } else if (usePolars) {
+        blockTypeName = 'PolarsSQLiteLoader';
+      } else {
+        blockTypeName = 'TsSQLiteLoader';
+      }
     }
     logger.logDebug(`Trying to find executor for ${blockTypeName}`);
 
