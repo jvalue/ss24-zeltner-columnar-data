@@ -139,23 +139,59 @@ impl Runcfg {
         self.show_output
     }
 
-    pub fn run(&self) -> (Duration, bool) {
+    pub fn filename(&self) -> String {
+        let mut s = match self.backend {
+            Backend::Typescript | Backend::Polars | Backend::PolarsRusqlite => "ts-",
+            Backend::PolarsOneBlock | Backend::PolarsOneBlockRusqlite => "plob-",
+        }
+        .to_string();
+
+        let trans = match self.transformations {
+            TransformAmount::None => "no",
+            TransformAmount::Some => "so",
+            TransformAmount::Many => "ma",
+        };
+        s.push_str(trans);
+        s.push_str(".jv");
+
+        s
+    }
+
+    pub fn run(&self) -> Result<Duration, Duration> {
         let src = format!("SRC={}", self.source.to_string_lossy());
         let dst = format!("DST={}", self.destination.to_string_lossy());
-        let mut cmd = Command::new("npm");
+        let mut cmd = Command::new("node");
         cmd.current_dir(&self.repo)
-            .args(["run", &self.example, "--", "-e", &src, "-e", &dst]);
+            .arg("dist/apps/interpreter/main.js")
+            .arg("example/".to_string() + &self.filename())
+            .args(["-d", "-dg", "peek", "-e", &src, "-e", &dst]);
         if !self.show_output {
             cmd.stdout(Stdio::null());
         }
         if self.hide_errors {
             cmd.stderr(Stdio::null());
         }
+        match self.backend {
+            Backend::Polars
+            | Backend::PolarsOneBlock
+            | Backend::PolarsRusqlite
+            | Backend::PolarsOneBlockRusqlite => {
+                cmd.arg("--use-polars");
+            }
+            Backend::Typescript => {}
+        }
+        match self.backend {
+            Backend::PolarsRusqlite | Backend::PolarsOneBlockRusqlite => {
+                cmd.arg("--use-rusqlite");
+            }
+            Backend::Polars | Backend::PolarsOneBlock | Backend::Typescript => {}
+        }
         // NOTE: https://stackoverflow.com/a/40953863
         let now = time::Instant::now();
         let mut child = cmd.spawn().expect("it should work");
         let out = child.wait().expect("no interrupts");
-        (now.elapsed(), out.success())
+        let dur = now.elapsed();
+        out.success().then_some(dur).ok_or(dur)
     }
 
     pub fn hide_errors(&self) -> bool {

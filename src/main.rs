@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
     str::FromStr,
+    time::Duration,
 };
 
 mod runcfg;
@@ -96,6 +97,11 @@ struct Cli {
     /// If omitted, all will be used.
     transformations: Vec<TransformAmount>,
 
+    #[arg(short, long)]
+    #[clap(default_value_t = 100)]
+    /// Repeat all combinations this many times
+    repetitions: usize,
+
     /// The location of the repository
     #[clap(default_value = "/home/jonas/Code/uni/bachelor/ss24-zeltner-columnar-data")]
     repo: PathBuf,
@@ -177,10 +183,11 @@ fn main() {
         backends,
         transformations,
         repo,
+        repetitions,
     } = Cli::parse();
 
     let datasizes = if datasizes.is_empty() {
-        vec![0]
+        vec![56_250, 112_500, 225_000, 450_000, 900_000, 1_800_000]
     } else {
         datasizes
     };
@@ -197,36 +204,60 @@ fn main() {
         transformations
     };
 
-    iproduct!(datasizes, transformations)
+    let configs = iproduct!(datasizes, transformations)
         .map(|(d, t)| {
             let d = (d != 0).then_some(d);
-            backends
-                .iter()
-                .map(|b| Runcfg::new(&repo, t, *b, d, show_output, hide_errors))
-                .map(|cfg| {
-                    let (duration, success) = cfg.run();
-                    (cfg, duration, success)
-                })
+            backends.iter().map(move |b| (t, *b, d))
+        })
+        .map(|touples| {
+            touples
+                .map(|(t, b, d)| Runcfg::new(&repo, t, b, d, show_output, hide_errors))
                 .collect::<Vec<_>>()
         })
-        .for_each(|cfgs| {
-            cfgs.array_windows::<2>()
-                .for_each(|[(c1, _, s1), (c2, _, s2)]| {
-                    if !s1 || !s2 {
-                        return;
+        .collect::<Vec<_>>();
+
+    for group in &configs {
+        for config in group {
+            println!("Running config {config} {repetitions} times");
+            let mut errors = 0;
+            let durations = (1..=repetitions)
+                .filter_map(|i| match config.run() {
+                    Ok(d) => {
+                        println!("{i}: {} ms", d.as_millis());
+                        Some(d)
                     }
-                    let diff = Sqldiff::compare(c1.destination(), c2.destination());
-                    if !diff.equal() {
-                        eprintln!("{c1} differs from {c2}: {diff}");
+                    Err(d) => {
+                        println!("{i}: {} ms", d.as_millis());
+                        errors += 1;
+                        None
                     }
-                });
-            println!();
-            cfgs.into_iter().for_each(|(cfg, dur, suc)| {
-                if suc {
-                    println!("{cfg} took {} seconds", dur.as_secs_f64());
-                } else {
-                    eprintln!("FAIL: {cfg}");
-                }
-            })
+                })
+                .collect::<Vec<_>>();
+            let n = durations.len() as f64;
+            let avg_ms = durations.iter().sum::<Duration>().as_millis() as f64 / n;
+            let var_ms = durations
+                .iter()
+                .map(|dur| {
+                    let x_ms = dur.as_millis() as f64;
+                    let diff = x_ms - avg_ms;
+                    diff * diff
+                })
+                .sum::<f64>()
+                / n;
+            let std_dev_ms = var_ms.sqrt();
+            println!("{config} x {repetitions}: avg: {avg_ms} ms, std: {std_dev_ms} ms")
+        }
+        let eq = group.array_windows::<2>().all(|[a, b]| {
+            let diff = Sqldiff::compare(a.destination(), b.destination());
+            if diff.equal() {
+                true
+            } else {
+                eprintln!("{a} differs from {b}: {diff}");
+                false
+            }
         });
+        if !eq {
+            eprintln!("WARNING: DIFFERENCES");
+        }
+    }
 }
