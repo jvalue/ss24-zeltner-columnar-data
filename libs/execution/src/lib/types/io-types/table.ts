@@ -71,15 +71,8 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
     return `DROP TABLE IF EXISTS "${tableName}";`;
   }
 
-  abstract generateInsertValuesStatement(
-    tableName: string,
-    context: ExecutionContext,
-  ): string;
-
-  abstract generateCreateTableStatement(
-    tableName: string,
-    context: ExecutionContext,
-  ): string;
+  abstract generateInsertValuesStatement(tableName: string): string;
+  abstract generateCreateTableStatement(tableName: string): string;
 }
 
 export class PolarsTable extends Table {
