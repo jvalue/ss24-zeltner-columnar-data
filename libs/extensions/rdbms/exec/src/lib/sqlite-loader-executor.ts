@@ -13,7 +13,7 @@ import {
   implementsStatic,
 } from '@jvalue/jayvee-execution';
 import { IOType } from '@jvalue/jayvee-language-server';
-import { loadSqlite } from 'bach-napi-test';
+import { loadSqlite } from 'sqlite-loader-rust';
 import sqlite3 from 'sqlite3';
 
 export abstract class SQLiteLoaderExecutor<
@@ -120,6 +120,7 @@ export class RustSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTable
   ): Promise<R.Result<R.None>> {
     try {
       const ipcName = 'df.ipc';
+      context.logger.logInfo(`Writing table ${tableName} to ${ipcName}`);
       table.writeIpcTo(ipcName);
       loadSqlite(ipcName, tableName, file, dropTable);
       return R.ok(NONE);

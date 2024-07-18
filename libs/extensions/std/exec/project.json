@@ -6,7 +6,7 @@
   "targets": {
     "build": {
       "options": {
-        "external": ["bach-napi-test"]
+        "external": ["sqlite-loader-rust"]
       }
     },
     "lint": {
