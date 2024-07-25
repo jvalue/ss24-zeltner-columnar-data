@@ -2,9 +2,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// eslint-disable-next-line unicorn/prefer-node-protocol
-import { strict as assert } from 'assert';
-
 import * as R from '@jvalue/jayvee-execution';
 import {
   AbstractBlockExecutor,
@@ -23,7 +20,10 @@ import pl, {
   type ReadCsvOptions,
 } from 'nodejs-polars';
 
-import { toPolarsDataTypeWithLogs } from './table-interpreter-executor';
+import {
+  TableInterpeter,
+  toPolarsDataTypeWithLogs,
+} from './table-interpreter-executor';
 
 export interface ColumnDefinitionEntry {
   sheetColumnIndex: number;
@@ -53,7 +53,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
         context.valueTypeProvider.Primitives.ValuetypeAssignment,
       ),
     );
-    const colDefs = this.deriveColumnDefinitionEntriesWithoutHeader(
+    const colDefs = TableInterpeter.deriveColumnDefinitionEntriesWithoutHeader(
       vtasss,
       context,
     );
@@ -130,59 +130,5 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
     context.logger.logDebug(JSON.stringify(options.schema));
     const df = pl.readCSV(content, options);
     return new PolarsTable(df, context.valueTypeProvider);
-  }
-
-  public static deriveColumnDefinitionEntriesWithoutHeader(
-    columnDefinitions: ValuetypeAssignment[],
-    context: ExecutionContext,
-  ): ColumnDefinitionEntry[] {
-    return columnDefinitions.map<ColumnDefinitionEntry>(
-      (columnDefinition, columnDefinitionIndex) => {
-        const columnValuetype = context.wrapperFactories.ValueType.wrap(
-          columnDefinition.type,
-        );
-        assert(columnValuetype !== undefined);
-        return {
-          sheetColumnIndex: columnDefinitionIndex,
-          columnName: columnDefinition.name,
-          valueType: columnValuetype,
-          astNode: columnDefinition,
-        };
-      },
-    );
-  }
-
-  public static deriveColumnDefinitionEntriesFromHeader(
-    columnDefinitions: ValuetypeAssignment[],
-    headerRow: string[],
-    context: ExecutionContext,
-  ): ColumnDefinitionEntry[] {
-    context.logger.logDebug(`Matching header with provided column names`);
-
-    const columnEntries: ColumnDefinitionEntry[] = [];
-    for (const columnDefinition of columnDefinitions) {
-      const indexOfMatchingHeader = headerRow.findIndex(
-        (headerColumnName) => headerColumnName === columnDefinition.name,
-      );
-      if (indexOfMatchingHeader === -1) {
-        context.logger.logDebug(
-          `Omitting column "${columnDefinition.name}" as the name was not found in the header`,
-        );
-        continue;
-      }
-      const columnValuetype = context.wrapperFactories.ValueType.wrap(
-        columnDefinition.type,
-      );
-      assert(columnValuetype !== undefined);
-
-      columnEntries.push({
-        sheetColumnIndex: indexOfMatchingHeader,
-        columnName: columnDefinition.name,
-        valueType: columnValuetype,
-        astNode: columnDefinition,
-      });
-    }
-
-    return columnEntries;
   }
 }
