@@ -8,7 +8,7 @@ use connector_arrow::{
 };
 use napi::Status;
 use napi_derive::napi;
-use std::{fs, iter};
+use std::fs;
 
 fn ipc_reader(path: &str) -> Result<FileReader<fs::File>, napi::Error> {
   println!("Opening ArrowIPC file {path}");
@@ -66,7 +66,7 @@ pub fn load_sqlite(
   sqlite_path: String,
   drop_table: bool,
 ) -> Result<(), napi::Error> {
-  let mut reader = ipc_reader(&ipc_path)?;
+  let reader = ipc_reader(&ipc_path)?;
   let mut conn = db_connection(&sqlite_path)?;
 
   if drop_table {
