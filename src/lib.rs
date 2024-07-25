@@ -18,21 +18,6 @@ fn ipc_reader(path: &str) -> Result<FileReader<fs::File>, napi::Error> {
   })
 }
 
-fn pop_first_batch<I>(batches: &mut I, ipc_path: &str) -> Result<RecordBatch, napi::Error>
-where
-  I: Iterator<Item = Result<RecordBatch, ArrowError>>,
-{
-  match batches.next() {
-    Some(Ok(batch)) => Ok(batch),
-    Some(Err(e)) => Err(napi::Error::<Status>::from_reason(format!(
-      "An error occured while reading {ipc_path}: {e}"
-    ))),
-    None => Err(napi::Error::<Status>::from_reason(format!(
-      "IPC file {ipc_path} did not contain any batches"
-    ))),
-  }
-}
-
 fn db_connection(sqlite_path: &str) -> Result<SQLiteConnection, napi::Error> {
   println!("Opening database file {sqlite_path}");
   rusqlite::Connection::open(sqlite_path)
@@ -44,19 +29,14 @@ fn db_connection(sqlite_path: &str) -> Result<SQLiteConnection, napi::Error> {
     })
 }
 
-fn append<'conn, A, I>(
-  mut appender: A,
-  first: RecordBatch,
-  remainder: I,
-) -> Result<usize, napi::Error>
+fn append<'conn, A, I>(mut appender: A, batches: I) -> Result<usize, napi::Error>
 where
   A: Append<'conn>,
   I: Iterator<Item = Result<RecordBatch, ArrowError>>,
 {
   let mut inserted_rows = 0;
-  let iter = iter::once(Ok(first)).chain(remainder);
   println!("Inserting rows");
-  for batch in iter {
+  for batch in batches {
     match batch {
       Ok(batch) => {
         let tmp = batch.num_rows();
@@ -87,7 +67,6 @@ pub fn load_sqlite(
   drop_table: bool,
 ) -> Result<(), napi::Error> {
   let mut reader = ipc_reader(&ipc_path)?;
-  let first_batch = pop_first_batch(&mut reader, &ipc_path)?;
   let mut conn = db_connection(&sqlite_path)?;
 
   if drop_table {
@@ -100,7 +79,7 @@ pub fn load_sqlite(
 
   println!("Creating table {table_name}");
   conn
-    .table_create(&table_name, first_batch.schema())
+    .table_create(&table_name, reader.schema())
     .map_err(|e| {
       napi::Error::<Status>::from_reason(format!("Could not create table {table_name}: {e}"))
     })?;
@@ -108,7 +87,7 @@ pub fn load_sqlite(
   let appender = conn.append(&table_name).map_err(|e| {
     napi::Error::<Status>::from_reason(format!("Could begin to insert values: {e}"))
   })?;
-  let inserted_rows = append(appender, first_batch, reader)?;
+  let inserted_rows = append(appender, reader)?;
   println!("Inserted {inserted_rows} rows");
   Ok(())
 }
