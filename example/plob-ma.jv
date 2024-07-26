@@ -1,14 +1,11 @@
-// SPDX-FileCopyrightText: 2023 Friedrich-Alexander-Universitat Erlangen-Nurnberg
+// SPDX-FileCopyrightText: 2024 Friedrich-Alexander-Universitat Erlangen-Nurnberg
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
 use * from './shared.jv';
 
 pipeline CarsPipeline {
-	LiquorExtractor
-		-> LiquorTextFileInterpreter
-		-> LiquorCSVInterpreter
-		-> LiquorTableInterpreter
+	LiquorTableExtractor
 		-> AddColmumnOne
 		-> BitPlusVol
 		-> UpdatePHLevel
@@ -21,18 +18,9 @@ pipeline CarsPipeline {
 		-> ColorLessThanTenDuplicate
 		-> LiquorLoader;
 
-
-	block LiquorExtractor oftype LocalFileExtractor {
+	block LiquorTableExtractor oftype LocalFileToTableExtractor {
 		filePath: requires SRC;
-	}
-
-	block LiquorTextFileInterpreter oftype TextFileInterpreter { }
-
-	block LiquorCSVInterpreter oftype CSVInterpreter {
 		enclosing: '"';
-	}
-
-	block LiquorTableInterpreter oftype TableInterpreter {
 		header: true;
 		columns: [
 			"Batch_ID" oftype integer,
