@@ -1,5 +1,4 @@
 #![deny(clippy::all)]
-#![feature(iterator_try_collect)]
 
 use arrow::{error::ArrowError, ipc::reader::FileReader, record_batch::RecordBatch};
 use connector_arrow::{
