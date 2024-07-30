@@ -1,6 +1,3 @@
-#![feature(iterator_try_collect)]
-#![feature(array_windows)]
-
 use std::{
     convert::Infallible,
     fmt::Display,
@@ -129,7 +126,7 @@ impl FromStr for Sqldiff {
             .trim()
             .split(',')
             .map(|s| s.split_whitespace().next()?.parse::<usize>().ok())
-            .try_collect::<Vec<_>>()
+            .collect::<Option<Vec<_>>>()
             .unwrap()
             .try_into()
             .unwrap();
@@ -247,14 +244,17 @@ fn main() {
             let std_dev_ms = var_ms.sqrt();
             println!("{config} x {repetitions}: avg: {avg_ms} ms, std: {std_dev_ms} ms")
         }
-        let eq = group.array_windows::<2>().all(|[a, b]| {
-            let diff = Sqldiff::compare(a.destination(), b.destination());
-            if diff.equal() {
-                true
-            } else {
-                eprintln!("{a} differs from {b}: {diff}");
-                false
+        let eq = group.windows(2).all(|window| match window {
+            [a, b] => {
+                let diff = Sqldiff::compare(a.destination(), b.destination());
+                if diff.equal() {
+                    true
+                } else {
+                    eprintln!("{a} differs from {b}: {diff}");
+                    false
+                }
             }
+            _ => true,
         });
         if !eq {
             eprintln!("WARNING: DIFFERENCES");
