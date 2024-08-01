@@ -17,7 +17,6 @@ import {
 import { zipWith } from 'fp-ts/lib/Array.js';
 import { type WriteIPCOptions, type pl } from 'nodejs-polars';
 
-import { type ExecutionContext } from '../../execution-context';
 import {
   SQLColumnTypeVisitor,
   SQLValueRepresentationVisitor,
@@ -214,9 +213,8 @@ export class TsTable extends Table {
 
   override withColumn(column: TsTableColumn): TsTable {
     assert(column.length === this.numberOfRows);
-    const nt = this.clone();
-    nt._columns.set(column.name, column);
-    return nt;
+    this._columns.set(column.name, column);
+    return this;
   }
 
   /**

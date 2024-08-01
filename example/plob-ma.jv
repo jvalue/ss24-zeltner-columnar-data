@@ -10,12 +10,10 @@ pipeline CarsPipeline {
 		-> BitPlusVol
 		-> UpdatePHLevel
 		-> SoldSqrt
-		-> ColorLessThanTen
 		-> AddColmumnOneDuplicate
 		-> BitPlusVolDuplicate
 		-> UpdatePHLevelDuplicate
 		-> SoldSqrtDuplicate
-		-> ColorLessThanTenDuplicate
 		-> LiquorLoader;
 
 	block LiquorTableExtractor oftype LocalFileToTableExtractor {
@@ -95,14 +93,6 @@ pipeline CarsPipeline {
 		ltt: n<10;
 	}
 
-	block ColorLessThanTen oftype TableTransformer {
-		inputColumns: [
-			"Color"
-		];
-		outputColumn: "Color";
-		uses: LessThanTen;
-	}
-
 	block AddColmumnOneDuplicate oftype TableTransformer {
 		inputColumns: [ ];
 		outputColumn: "One";
@@ -132,14 +122,6 @@ pipeline CarsPipeline {
 		];
 		outputColumn: "sqrt(sales)";
 		uses: Sqrt;
-	}
-
-	block ColorLessThanTenDuplicate oftype TableTransformer {
-		inputColumns: [
-			"Color"
-		];
-		outputColumn: "Color";
-		uses: LessThanTen;
 	}
 
 	block LiquorLoader oftype SQLiteLoader {

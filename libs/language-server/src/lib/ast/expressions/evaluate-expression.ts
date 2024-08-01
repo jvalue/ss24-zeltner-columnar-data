@@ -37,10 +37,7 @@ import {
   type InternalValueRepresentation,
   type PolarsInternal,
 } from './internal-value-representation';
-import {
-  type OperatorEvaluator,
-  type PolarsOperatorEvaluator,
-} from './operator-evaluator';
+import { type PolarsOperatorEvaluator } from './operator-evaluator';
 import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   isEveryValueDefined,
@@ -111,7 +108,9 @@ function getEvaluator(
   }
   if (isTernaryExpression(expression)) {
     const operator = expression.operator;
-    throw new Error('Ternary operations are not supported yet');
+    throw new Error(
+      `Ternary operations such as ${operator} are not supported yet`,
+    );
     // return evaluationContext.operatorRegistry.ternary[operator];
   }
   assertUnreachable(expression);

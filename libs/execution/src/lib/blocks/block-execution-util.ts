@@ -12,8 +12,8 @@ import { type ExecutionContext } from '../execution-context';
 import { type Logger } from '../logging/logger';
 import { type IOTypeImplementation, NONE } from '../types';
 
+import { type BlockExecutor } from './block-executor';
 import * as R from './execution-result';
-import { BlockExecutor } from './block-executor';
 
 export interface ExecutionOrderItem {
   block: BlockDefinition;

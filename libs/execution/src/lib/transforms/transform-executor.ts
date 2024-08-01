@@ -16,7 +16,6 @@ import {
   evaluateExpression,
   polarsEvaluateExpression,
 } from '@jvalue/jayvee-language-server';
-import { pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
