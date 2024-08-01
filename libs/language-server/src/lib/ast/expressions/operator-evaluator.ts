@@ -29,10 +29,6 @@ import {
   type TernaryExpressionOperator,
   type UnaryExpressionOperator,
 } from './operator-types';
-import {
-  BOOLEAN_TYPEGUARD,
-  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
-} from './typeguards';
 
 export interface OperatorEvaluator<
   E extends UnaryExpression | BinaryExpression | TernaryExpression,

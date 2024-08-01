@@ -44,7 +44,7 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
     super(IOType.SHEET, IOType.TABLE);
   }
 
-  protected deriveColumnDefinitionEntriesWithoutHeader(
+  public static deriveColumnDefinitionEntriesWithoutHeader(
     columnDefinitions: ValuetypeAssignment[],
     context: ExecutionContext,
   ): ColumnDefinitionEntry[] {
@@ -64,7 +64,7 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
     );
   }
 
-  protected deriveColumnDefinitionEntriesFromHeader(
+  public static deriveColumnDefinitionEntriesFromHeader(
     columnDefinitions: ValuetypeAssignment[],
     headerRow: string[],
     context: ExecutionContext,
@@ -128,7 +128,7 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
 
       const headerRow = inputSheet.getHeaderRow();
 
-      columnEntries = this.deriveColumnDefinitionEntriesFromHeader(
+      columnEntries = TableInterpeter.deriveColumnDefinitionEntriesFromHeader(
         columnDefinitions,
         headerRow,
         context,
@@ -145,10 +145,11 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
         });
       }
 
-      columnEntries = this.deriveColumnDefinitionEntriesWithoutHeader(
-        columnDefinitions,
-        context,
-      );
+      columnEntries =
+        TableInterpeter.deriveColumnDefinitionEntriesWithoutHeader(
+          columnDefinitions,
+          context,
+        );
     }
 
     const numberOfTableRows = header
@@ -202,7 +203,7 @@ export function toPolarsDataTypeWithLogs(
   const defalt = pl.Utf8;
   if (dt === undefined) {
     logger.logErr(
-      `${vt.getName()} is niether primitive nor atomic and thus not yet supported. Attempting to use ${defalt.toString()}`,
+      `${vt.getName()} is neither primitive nor atomic and thus not yet supported. Attempting to use ${defalt.toString()}`,
     );
   }
   return dt ?? defalt;

@@ -54,6 +54,7 @@ export class ExecutionContext {
       debugGranularity: DebugGranularity;
       debugTargets: DebugTargets;
       usePolars: boolean;
+      useRusqlite: boolean;
     },
     public readonly evaluationContext: EvaluationContext,
   ) {

@@ -25,6 +25,7 @@ export abstract class JayveeExecExtension {
   getExecutorForBlockType(
     blockTypeName: string,
     usePolars: boolean,
+    useRusqlite: boolean,
     logger: Logger,
   ): BlockExecutorClass | undefined {
     if (blockTypeName === 'TableInterpreter') {
@@ -38,7 +39,13 @@ export abstract class JayveeExecExtension {
         : 'TsTableTransformer';
     }
     if (blockTypeName === 'SQLiteLoader') {
-      blockTypeName = usePolars ? 'PolarsSQLiteLoader' : 'TsSQLiteLoader';
+      if (useRusqlite) {
+        blockTypeName = 'RustSQLiteLoader';
+      } else if (usePolars) {
+        blockTypeName = 'PolarsSQLiteLoader';
+      } else {
+        blockTypeName = 'TsSQLiteLoader';
+      }
     }
     logger.logDebug(`Trying to find executor for ${blockTypeName}`);
 
@@ -50,6 +57,7 @@ export abstract class JayveeExecExtension {
   createBlockExecutor(
     block: BlockDefinition,
     usePolars: boolean,
+    useRusqlite: boolean,
     logger: Logger,
   ): BlockExecutor {
     const blockType = block.type.ref;
@@ -58,6 +66,7 @@ export abstract class JayveeExecExtension {
     let blockExecutor = this.getExecutorForBlockType(
       blockType.name,
       usePolars,
+      useRusqlite,
       logger,
     );
 

@@ -33,9 +33,6 @@ export class PolarsTableColumn extends TableColumn {
     valueType: ValueType | ValueTypeProvider,
   ) {
     super();
-    if (valueType instanceof ValueTypeProvider) {
-      valueType = valueType.fromPolarsDType(this._series.dtype);
-    }
     valueType =
       valueType instanceof ValueTypeProvider
         ? valueType.fromPolarsDType(this._series.dtype)
@@ -59,7 +56,7 @@ export class PolarsTableColumn extends TableColumn {
     return this._series.length;
   }
 
-  override nth(n: number): InternalValueRepresentation | undefined | null {
+  override nth(n: number): InternalValueRepresentation | null {
     const nth = this._series.getIndex(n) as unknown;
     if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(nth)) {
       return nth;

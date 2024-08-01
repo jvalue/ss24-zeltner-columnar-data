@@ -32,7 +32,7 @@ export class LocalFileExtractorExecutor extends AbstractBlockExecutor<
   }
 
   async doExecute(
-    input: None,
+    _input: None,
     context: ExecutionContext,
   ): Promise<R.Result<BinaryFile>> {
     const filePath = context.getPropertyValue(
@@ -74,7 +74,9 @@ export class LocalFileExtractorExecutor extends AbstractBlockExecutor<
       return R.ok(file);
     } catch (error) {
       return R.err({
-        message: `File '${filePath}' not found.`,
+        message: `Could not read File '${filePath}': ${
+          error instanceof Error ? error.message : JSON.stringify(error)
+        }`,
         diagnostic: { node: context.getCurrentNode(), property: 'filePath' },
       });
     }

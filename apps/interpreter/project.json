@@ -6,6 +6,7 @@
   "targets": {
     "build": {
       "options": {
+        "external": ["sqlite-loader-rust"],
         "tsConfig": "{projectRoot}/tsconfig.app.json"
       }
     },

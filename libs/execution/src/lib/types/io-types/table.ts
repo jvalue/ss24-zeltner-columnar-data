@@ -17,7 +17,6 @@ import {
 import { zipWith } from 'fp-ts/lib/Array.js';
 import { type WriteIPCOptions, type pl } from 'nodejs-polars';
 
-import { type ExecutionContext } from '../../execution-context';
 import {
   SQLColumnTypeVisitor,
   SQLValueRepresentationVisitor,
@@ -71,15 +70,8 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
     return `DROP TABLE IF EXISTS "${tableName}";`;
   }
 
-  abstract generateInsertValuesStatement(
-    tableName: string,
-    context: ExecutionContext,
-  ): string;
-
-  abstract generateCreateTableStatement(
-    tableName: string,
-    context: ExecutionContext,
-  ): string;
+  abstract generateInsertValuesStatement(tableName: string): string;
+  abstract generateCreateTableStatement(tableName: string): string;
 }
 
 export class PolarsTable extends Table {
@@ -221,9 +213,8 @@ export class TsTable extends Table {
 
   override withColumn(column: TsTableColumn): TsTable {
     assert(column.length === this.numberOfRows);
-    const nt = this.clone();
-    nt._columns.set(column.name, column);
-    return nt;
+    this._columns.set(column.name, column);
+    return this;
   }
 
   /**
@@ -361,10 +352,8 @@ export class TsTable extends Table {
 
   override clone(): TsTable {
     const newColumns: Map<string, TsTableColumn> = new Map();
-    this.columns.forEach((column, name) => {
-      const clonedName: unknown = JSON.parse(JSON.stringify(name));
-      assert(typeof clonedName === 'string');
-      newColumns.set(clonedName, column.clone());
+    this._columns.forEach((column, name) => {
+      newColumns.set(name, column.clone());
     });
 
     return new TsTable(this.numberOfRows, newColumns);

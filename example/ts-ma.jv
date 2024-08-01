@@ -1,0 +1,144 @@
+// SPDX-FileCopyrightText: 2023 Friedrich-Alexander-Universitat Erlangen-Nurnberg
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
+use * from './shared.jv';
+
+pipeline CarsPipeline {
+	LiquorExtractor
+		-> LiquorTextFileInterpreter
+		-> LiquorCSVInterpreter
+		-> LiquorTableInterpreter
+		-> AddColmumnOne
+		-> BitPlusVol
+		-> UpdatePHLevel
+		-> SoldSqrt
+		-> AddColmumnOneDuplicate
+		-> BitPlusVolDuplicate
+		-> UpdatePHLevelDuplicate
+		-> SoldSqrtDuplicate
+		-> LiquorLoader;
+
+
+	block LiquorExtractor oftype LocalFileExtractor {
+		filePath: requires SRC;
+	}
+
+	block LiquorTextFileInterpreter oftype TextFileInterpreter { }
+
+	block LiquorCSVInterpreter oftype CSVInterpreter {
+		enclosing: '"';
+	}
+
+	block LiquorTableInterpreter oftype TableInterpreter {
+		header: true;
+		columns: [
+			"Batch_ID" oftype integer,
+			"Brew_Date" oftype text,
+			"Beer_Style" oftype text,
+			"SKU" oftype text,
+			"Location" oftype text,
+			"Fermentation_Time" oftype integer,
+			"Temperature" oftype decimal,
+			"pH_Level" oftype decimal,
+			"Gravity" oftype decimal,
+			"Alcohol_Content" oftype decimal,
+			"Bitterness" oftype integer,
+			"Color" oftype integer,
+			"Ingredient_Ratio" oftype text,
+			"Volume_Produced" oftype integer,
+			"Total_Sales" oftype decimal,
+			"Quality_Score" oftype decimal,
+			"Brewhouse_Efficiency" oftype decimal,
+			"Loss_During_Brewing" oftype decimal,
+			"Loss_During_Fermentation" oftype decimal,
+			"Loss_During_Bottling_Kegging" oftype decimal,
+		];
+	}
+
+	block AddColmumnOne oftype TableTransformer {
+		inputColumns: [ ];
+		outputColumn: "One";
+		uses: One;
+	}
+
+	block BitPlusVol oftype TableTransformer {
+		inputColumns: [
+			"Bitterness",
+			"Volume_Produced"
+		];
+		outputColumn: "Bitterness plus Volume_Produced";
+		uses: AddInt;
+	}
+
+	transform TimesTenThousand {
+		from n oftype decimal;
+		to nn oftype decimal;
+		nn: n * 10000;
+	}
+
+	block UpdatePHLevel oftype TableTransformer {
+		inputColumns: [
+			"pH_Level",
+		];
+		outputColumn: "pH_Level";
+		uses: TimesTenThousand;
+	}
+
+	transform Sqrt {
+		from n oftype decimal;
+		to nn oftype decimal;
+		nn: sqrt n;
+	}
+
+	block SoldSqrt oftype TableTransformer {
+		inputColumns: [
+			"Total_Sales"
+		];
+		outputColumn: "sqrt(sales)";
+		uses: Sqrt;
+	}
+
+	transform LessThanTen {
+		from n oftype integer;
+		to ltt oftype boolean;
+		ltt: n<10;
+	}
+
+	block AddColmumnOneDuplicate oftype TableTransformer {
+		inputColumns: [ ];
+		outputColumn: "One";
+		uses: One;
+	}
+
+	block BitPlusVolDuplicate oftype TableTransformer {
+		inputColumns: [
+			"Bitterness",
+			"Volume_Produced"
+		];
+		outputColumn: "Bitterness plus Volume_Produced";
+		uses: AddInt;
+	}
+
+	block UpdatePHLevelDuplicate oftype TableTransformer {
+		inputColumns: [
+			"pH_Level",
+		];
+		outputColumn: "pH_Level";
+		uses: TimesTenThousand;
+	}
+
+	block SoldSqrtDuplicate oftype TableTransformer {
+		inputColumns: [
+			"Total_Sales"
+		];
+		outputColumn: "sqrt(sales)";
+		uses: Sqrt;
+	}
+
+	block LiquorLoader oftype SQLiteLoader {
+		table: "Brewing";
+		file: requires DST;
+	}
+}
+

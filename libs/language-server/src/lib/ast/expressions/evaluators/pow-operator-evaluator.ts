@@ -4,7 +4,6 @@
 
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type BinaryExpression } from '../../generated/ast';
-import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 

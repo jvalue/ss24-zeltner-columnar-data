@@ -1,0 +1,54 @@
+// SPDX-FileCopyrightText: 2023 Friedrich-Alexander-Universitat Erlangen-Nurnberg
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
+pipeline CarsPipeline {
+	LiquorExtractor
+		-> LiquorTextFileInterpreter
+		-> LiquorCSVInterpreter
+		-> LiquorTableInterpreter
+		-> LiquorLoader;
+
+
+	block LiquorExtractor oftype LocalFileExtractor {
+		filePath: requires SRC;
+	}
+
+	block LiquorTextFileInterpreter oftype TextFileInterpreter { }
+
+	block LiquorCSVInterpreter oftype CSVInterpreter {
+		enclosing: '"';
+	}
+
+	block LiquorTableInterpreter oftype TableInterpreter {
+		header: true;
+		columns: [
+			"Batch_ID" oftype integer,
+			"Brew_Date" oftype text,
+			"Beer_Style" oftype text,
+			"SKU" oftype text,
+			"Location" oftype text,
+			"Fermentation_Time" oftype integer,
+			"Temperature" oftype decimal,
+			"pH_Level" oftype decimal,
+			"Gravity" oftype decimal,
+			"Alcohol_Content" oftype decimal,
+			"Bitterness" oftype integer,
+			"Color" oftype integer,
+			"Ingredient_Ratio" oftype text,
+			"Volume_Produced" oftype integer,
+			"Total_Sales" oftype decimal,
+			"Quality_Score" oftype decimal,
+			"Brewhouse_Efficiency" oftype decimal,
+			"Loss_During_Brewing" oftype decimal,
+			"Loss_During_Fermentation" oftype decimal,
+			"Loss_During_Bottling_Kegging" oftype decimal,
+		];
+	}
+
+	block LiquorLoader oftype SQLiteLoader {
+		table: "Brewing";
+		file: requires DST;
+	}
+}
+

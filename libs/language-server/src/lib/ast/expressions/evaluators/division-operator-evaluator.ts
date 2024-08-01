@@ -5,7 +5,6 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
-import { pl } from 'nodejs-polars';
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type BinaryExpression } from '../../generated/ast';
 import { type PolarsInternal } from '../internal-value-representation';

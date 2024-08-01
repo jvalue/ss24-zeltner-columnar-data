@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { DataType as PlDType, pl } from 'nodejs-polars';
+import { type DataType as PlDType, pl } from 'nodejs-polars';
 
 import {
   type AtomicInternalValueRepresentation,

@@ -12,6 +12,7 @@ import { type ExecutionContext } from '../execution-context';
 import { type Logger } from '../logging/logger';
 import { type IOTypeImplementation, NONE } from '../types';
 
+import { type BlockExecutor } from './block-executor';
 import * as R from './execution-result';
 
 export interface ExecutionOrderItem {
@@ -92,11 +93,14 @@ export async function executeBlock(
     return R.ok(null);
   }
 
-  const blockExecutor = executionContext.executionExtension.createBlockExecutor(
-    block,
-    executionContext.runOptions.usePolars,
-    executionContext.logger,
-  );
+  const blockExecutor: BlockExecutor =
+    executionContext.executionExtension.createBlockExecutor(
+      block,
+      executionContext.runOptions.usePolars ||
+        executionContext.runOptions.useRusqlite,
+      executionContext.runOptions.useRusqlite,
+      executionContext.logger,
+    );
 
   const startTime = new Date();
 
