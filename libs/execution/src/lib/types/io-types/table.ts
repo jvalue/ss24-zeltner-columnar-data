@@ -302,7 +302,7 @@ export class TsTable extends Table {
     }
 
     return [...this.columns.values()].map((col) => {
-      const cell = col.nth(rowId);
+      const cell = col.at(rowId);
       if (cell === undefined) {
         throw new Error(`Unexpected undefined for cell in row ${rowId}`);
       }
@@ -318,7 +318,7 @@ export class TsTable extends Table {
     for (let rowIndex = 0; rowIndex < this.nRows; ++rowIndex) {
       const rowValues: string[] = [];
       for (const column of columns) {
-        const entry = column.nth(rowIndex);
+        const entry = column.at(rowIndex);
 
         const formattedValue =
           entry === undefined

@@ -7,7 +7,6 @@ import { strict as assert } from 'assert';
 
 import {
   INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD,
-  INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   type InternalValueRepresentation,
   type ValueType,
 } from '@jvalue/jayvee-language-server';
@@ -20,7 +19,6 @@ export abstract class TableColumn<
   abstract get name(): string;
   abstract set name(newName: string);
   abstract get length(): number;
-  abstract nth(n: number): T | undefined | null;
   abstract clone(): TableColumn<T>;
 
   abstract isPolars(): this is PolarsTableColumn<T>;
@@ -48,23 +46,6 @@ export class PolarsTableColumn<
 
   override get length(): number {
     return this._series.length;
-  }
-
-  override nth(n: number): T | null {
-    const nth = this._series.getIndex(n) as unknown;
-    if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(nth)) {
-      if (this._valueType.isInternalValueRepresentation(nth)) {
-        return nth;
-      }
-    }
-    if (nth == null) {
-      return null;
-    }
-    throw new Error(
-      `Expected InternalRepresentation not ${JSON.stringify(
-        nth,
-      )} (${typeof nth})`,
-    );
   }
 
   override clone(): PolarsTableColumn<T> {
@@ -111,10 +92,6 @@ export class TsTableColumn<
     return this._values.length;
   }
 
-  override nth(n: number): T | undefined {
-    return this._values.at(n);
-  }
-
   override clone(): TsTableColumn<T> {
     // HACK: This feels wrong, but I didn't find any other solution
     const clonedName: unknown = JSON.parse(JSON.stringify(this._name));
@@ -141,6 +118,10 @@ export class TsTableColumn<
     if (this._valueType.isInternalValueRepresentation(x)) {
       this._values.push(x);
     }
+  }
+
+  at(n: number): T | undefined {
+    return this._values.at(n);
   }
 
   drop(rowIdx: number): T | undefined {
