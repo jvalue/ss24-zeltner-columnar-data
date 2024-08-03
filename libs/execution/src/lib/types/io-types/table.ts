@@ -154,14 +154,16 @@ export class PolarsTable extends Table {
   override get columns(): readonly PolarsTableColumn[] {
     const seriess = this.df.getColumns();
     return seriess.map((s) => {
-      return new PolarsTableColumn(s, this.valueTypeProvider);
+      const valueType = this.valueTypeProvider.fromPolarsDType(s.dtype);
+      return new PolarsTableColumn(s, valueType);
     });
   }
 
   override getColumn(name: string): PolarsTableColumn | undefined {
     try {
       const s = this.df.getColumn(name);
-      return new PolarsTableColumn(s, this.valueTypeProvider);
+      const valueType = this.valueTypeProvider.fromPolarsDType(s.dtype);
+      return new PolarsTableColumn(s, valueType);
     } catch {
       return undefined;
     }

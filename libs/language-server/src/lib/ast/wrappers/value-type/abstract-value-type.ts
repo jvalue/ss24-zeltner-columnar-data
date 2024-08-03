@@ -47,6 +47,15 @@ export abstract class AbstractValueType<I extends InternalValueRepresentation>
     operandValue: InternalValueRepresentation | undefined,
   ): operandValue is I;
 
+  isArrayInternalValueRepresentation(
+    operandValue: InternalValueRepresentation[] | undefined,
+  ): operandValue is I[] {
+    if (operandValue === undefined) {
+      return false;
+    }
+    return operandValue.every((e) => this.isInternalValueRepresentation(e));
+  }
+
   abstract getName(): string;
 
   hasSupertypeCycle(visited: ValueType[] = []): boolean {

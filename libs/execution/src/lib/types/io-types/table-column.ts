@@ -10,37 +10,31 @@ import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   type InternalValueRepresentation,
   type ValueType,
-  ValueTypeProvider,
 } from '@jvalue/jayvee-language-server';
 import { type pl } from 'nodejs-polars';
 
-export abstract class TableColumn {
-  abstract get valueType(): ValueType;
+export abstract class TableColumn<
+  T extends InternalValueRepresentation = InternalValueRepresentation,
+> {
+  abstract get valueType(): ValueType<T>;
   abstract get name(): string;
   abstract set name(newName: string);
   abstract get length(): number;
-  abstract nth(n: number): InternalValueRepresentation | undefined | null;
-  abstract clone(): TableColumn;
+  abstract nth(n: number): T | undefined | null;
+  abstract clone(): TableColumn<T>;
 
-  abstract isPolars(): this is PolarsTableColumn;
-  abstract isTypescript(): this is TsTableColumn;
+  abstract isPolars(): this is PolarsTableColumn<T>;
+  abstract isTypescript(): this is TsTableColumn<T>;
 }
 
-export class PolarsTableColumn extends TableColumn {
-  private _valueType: ValueType;
-  constructor(
-    private _series: pl.Series,
-    valueType: ValueType | ValueTypeProvider,
-  ) {
+export class PolarsTableColumn<
+  T extends InternalValueRepresentation = InternalValueRepresentation,
+> extends TableColumn<T> {
+  constructor(private _series: pl.Series, private _valueType: ValueType<T>) {
     super();
-    valueType =
-      valueType instanceof ValueTypeProvider
-        ? valueType.fromPolarsDType(this._series.dtype)
-        : valueType;
-    this._valueType = valueType;
   }
 
-  override get valueType(): ValueType {
+  override get valueType(): ValueType<T> {
     return this._valueType;
   }
 
@@ -56,10 +50,12 @@ export class PolarsTableColumn extends TableColumn {
     return this._series.length;
   }
 
-  override nth(n: number): InternalValueRepresentation | null {
+  override nth(n: number): T | null {
     const nth = this._series.getIndex(n) as unknown;
     if (INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(nth)) {
-      return nth;
+      if (this._valueType.isInternalValueRepresentation(nth)) {
+        return nth;
+      }
     }
     if (nth == null) {
       return null;
@@ -71,15 +67,15 @@ export class PolarsTableColumn extends TableColumn {
     );
   }
 
-  override clone(): PolarsTableColumn {
-    return new PolarsTableColumn(this._series.clone(), this.valueType);
+  override clone(): PolarsTableColumn<T> {
+    return new PolarsTableColumn<T>(this._series.clone(), this._valueType);
   }
 
-  override isPolars(): this is PolarsTableColumn {
+  override isPolars(): this is PolarsTableColumn<T> {
     return true;
   }
 
-  override isTypescript(): this is TsTableColumn {
+  override isTypescript(): this is TsTableColumn<T> {
     return false;
   }
 
@@ -90,7 +86,7 @@ export class PolarsTableColumn extends TableColumn {
 
 export class TsTableColumn<
   T extends InternalValueRepresentation = InternalValueRepresentation,
-> extends TableColumn {
+> extends TableColumn<T> {
   constructor(
     private _name: string,
     private _valueType: ValueType<T>,
@@ -119,23 +115,21 @@ export class TsTableColumn<
     return this._values.at(n);
   }
 
-  override clone(): TsTableColumn {
+  override clone(): TsTableColumn<T> {
     // HACK: This feels wrong, but I didn't find any other solution
     const clonedName: unknown = JSON.parse(JSON.stringify(this._name));
     assert(typeof clonedName === 'string');
     const clonedValues: unknown = JSON.parse(JSON.stringify(this._values));
     assert(
       INTERNAL_ARRAY_REPRESENTATION_TYPEGUARD(clonedValues) &&
-        clonedValues.every((e) =>
-          this._valueType.isInternalValueRepresentation(e),
-        ),
+        this._valueType.isArrayInternalValueRepresentation(clonedValues),
     );
     // INFO: `this.valueType` must not be cloned, because the typesystem depends
     // on it being the same object
-    return new TsTableColumn(clonedName, this._valueType, clonedValues);
+    return new TsTableColumn<T>(clonedName, this._valueType, clonedValues);
   }
 
-  override isPolars(): this is PolarsTableColumn {
+  override isPolars(): this is PolarsTableColumn<T> {
     return false;
   }
 
@@ -149,7 +143,9 @@ export class TsTableColumn<
     }
   }
 
-  drop(rowIdx: number) {
-    return this._values.splice(rowIdx, 1);
+  drop(rowIdx: number): T | undefined {
+    const dropped = this._values.splice(rowIdx, 1);
+    assert(dropped.length <= 1);
+    return dropped[0];
   }
 }

@@ -68,6 +68,14 @@ export interface ValueType<
   ): operandValue is I;
 
   /**
+   * Typeguard to validate whether a given value is an array of correct internal representations of this value type.
+   * For example, a TextValuetype has array represenattion string[]
+   */
+  isArrayInternalValueRepresentation(
+    operandValue: InternalValueRepresentation[] | undefined,
+  ): operandValue is I[];
+
+  /**
    * Checks if there is a cycle in the supertype relation.
    */
   hasSupertypeCycle(visited?: ValueType[]): boolean;
