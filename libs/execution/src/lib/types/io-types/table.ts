@@ -215,8 +215,15 @@ export class TsTable extends Table {
 
   override withColumn(column: TsTableColumn): TsTable {
     assert(column.length === this.numberOfRows);
-    this._columns.set(column.name, column);
-    return this;
+    const newTable = this.clone();
+    newTable.addColumn(column.name, column);
+    return newTable;
+  }
+
+  addColumn(name: string, column: TsTableColumn): void {
+    assert(column.length === this.numberOfRows);
+    column.name = name;
+    this._columns.set(name, column);
   }
 
   /**
@@ -247,12 +254,6 @@ export class TsTable extends Table {
     });
 
     this.numberOfRows++;
-  }
-
-  addColumn(name: string, column: TsTableColumn): void {
-    assert(column.length === this.numberOfRows);
-    column.name = name;
-    this._columns.set(name, column);
   }
 
   dropRow(rowIdx: number): void {
