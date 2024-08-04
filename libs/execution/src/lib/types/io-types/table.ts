@@ -34,17 +34,7 @@ import {
 
 export * from './table-column';
 
-export type TableRow = (InternalValueRepresentation | undefined)[];
-export type TableRowMap = Record<
-  string,
-  InternalValueRepresentation | undefined
->;
-
-export const TABLEROW_TYPEGUARD = (value: unknown): value is TableRow =>
-  Array.isArray(value) &&
-  value.every(
-    (e) => e === undefined || INTERNAL_VALUE_REPRESENTATION_TYPEGUARD(e),
-  );
+export type TableRow = Record<string, InternalValueRepresentation>;
 
 /**
  * Invariant: the shape of the table is always a rectangle.
@@ -59,7 +49,6 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
   abstract hasColumn(name: string): boolean;
   abstract get columns(): ReadonlyArray<TableColumn>;
   abstract getColumn(name: string): TableColumn | undefined;
-  abstract getRow(id: number): TableRow;
   abstract clone(): Table;
   abstract acceptVisitor<R>(visitor: IoTypeVisitor<R>): R;
 
@@ -169,14 +158,6 @@ export class PolarsTable extends Table {
     }
   }
 
-  override getRow(id: number): TableRow {
-    const row = this.df.row(id);
-    if (TABLEROW_TYPEGUARD(row)) {
-      return row;
-    }
-    throw new Error(`row: Expected InternalRepresentation not ${typeof row} `);
-  }
-
   override clone(): PolarsTable {
     return new PolarsTable(this.df.clone(), this.valueTypeProvider);
   }
@@ -231,7 +212,7 @@ export class TsTable extends Table {
    * NOTE: This method will only add the row if the table has at least one column!
    * @param row data of this row for each column
    */
-  addRow(row: TableRowMap): void {
+  addRow(row: TableRow): void {
     const rowLength = Object.keys(row).length;
     assert(
       rowLength === this._columns.size,
