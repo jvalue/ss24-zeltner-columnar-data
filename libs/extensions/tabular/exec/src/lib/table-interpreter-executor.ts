@@ -36,7 +36,7 @@ export interface ColumnDefinitionEntry {
   astNode: ValuetypeAssignment;
 }
 
-export abstract class TableInterpeter extends AbstractBlockExecutor<
+export abstract class TableInterpeterExecutor extends AbstractBlockExecutor<
   IOType.SHEET,
   IOType.TABLE
 > {
@@ -128,11 +128,12 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
 
       const headerRow = inputSheet.getHeaderRow();
 
-      columnEntries = TableInterpeter.deriveColumnDefinitionEntriesFromHeader(
-        columnDefinitions,
-        headerRow,
-        context,
-      );
+      columnEntries =
+        TableInterpeterExecutor.deriveColumnDefinitionEntriesFromHeader(
+          columnDefinitions,
+          headerRow,
+          context,
+        );
     } else {
       if (inputSheet.getNumberOfColumns() < columnDefinitions.length) {
         return R.err({
@@ -146,7 +147,7 @@ export abstract class TableInterpeter extends AbstractBlockExecutor<
       }
 
       columnEntries =
-        TableInterpeter.deriveColumnDefinitionEntriesWithoutHeader(
+        TableInterpeterExecutor.deriveColumnDefinitionEntriesWithoutHeader(
           columnDefinitions,
           context,
         );
@@ -210,7 +211,7 @@ export function toPolarsDataTypeWithLogs(
 }
 
 @implementsStatic<BlockExecutorClass>()
-export class PolarsTableInterpreterExecutor extends TableInterpeter {
+export class PolarsTableInterpreterExecutor extends TableInterpeterExecutor {
   public static readonly type = 'PolarsTableInterpreter';
 
   protected override constructAndValidateTable(
@@ -251,7 +252,7 @@ export class PolarsTableInterpreterExecutor extends TableInterpeter {
 }
 
 @implementsStatic<BlockExecutorClass>()
-export class TsTableInterpreterExecutor extends TableInterpeter {
+export class TsTableInterpreterExecutor extends TableInterpeterExecutor {
   public static readonly type = 'TsTableInterpreter';
 
   protected override constructAndValidateTable(

@@ -21,7 +21,7 @@ import pl, {
 } from 'nodejs-polars';
 
 import {
-  TableInterpeter,
+  TableInterpeterExecutor,
   toPolarsDataTypeWithLogs,
 } from './table-interpreter-executor';
 
@@ -53,10 +53,11 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
         context.valueTypeProvider.Primitives.ValuetypeAssignment,
       ),
     );
-    const colDefs = TableInterpeter.deriveColumnDefinitionEntriesWithoutHeader(
-      vtasss,
-      context,
-    );
+    const colDefs =
+      TableInterpeterExecutor.deriveColumnDefinitionEntriesWithoutHeader(
+        vtasss,
+        context,
+      );
 
     const schema: Record<string, PlDType> = {};
     const columnNames = colDefs.map((colDef) => {
@@ -81,8 +82,11 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
       context.valueTypeProvider.Primitives.Text,
     );
     if (encoding !== 'utf-8') {
-      throw new Error(`encoding ${encoding} Only utf8 is supported`);
+      context.logger.logErr(
+        `Encoding ${encoding} not supported. The data might be read incorrectly`,
+      );
     }
+    const enc = encoding !== 'utf-8' ? 'utf8' : 'utf8-lossy';
 
     const delimiter = context.getPropertyValue(
       'delimiter',
@@ -96,7 +100,7 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
     return {
       columns: columnNames,
       hasHeader: header,
-      encoding: 'utf8',
+      encoding: enc,
       sep: delimiter,
       quoteChar: enclosing,
       schema: schema,
