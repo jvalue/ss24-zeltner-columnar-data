@@ -114,25 +114,13 @@ export class FileToTableInterpreterExecutor extends AbstractBlockExecutor<
   ): Promise<R.Result<R.Table>> {
     context.logger.logDebug(`Validating row(s) according to the column types`);
 
-    const resultingTable =
-      FileToTableInterpreterExecutor.constructAndValidateTable(
-        Buffer.from(file.content),
-        FileToTableInterpreterExecutor.csvOptions(context),
-        context,
-      );
-    context.logger.logDebug(
-      `Validation completed, the resulting table has ${resultingTable.nRows} row(s) and ${resultingTable.nColumns} column(s)`,
-    );
-    return R.ok(resultingTable);
-  }
-
-  public static constructAndValidateTable(
-    content: Buffer,
-    options: Partial<ReadCsvOptions>,
-    context: ExecutionContext,
-  ): PolarsTable {
-    context.logger.logDebug(JSON.stringify(options.schema));
+    const content = Buffer.from(file.content);
+    const options = FileToTableInterpreterExecutor.csvOptions(context);
     const df = pl.readCSV(content, options);
-    return new PolarsTable(df, context.valueTypeProvider);
+    const table = new PolarsTable(df, context.valueTypeProvider);
+    context.logger.logDebug(
+      `Validation completed, the resulting table has ${table.nRows} row(s) and ${table.nColumns} column(s)`,
+    );
+    return R.ok(table);
   }
 }

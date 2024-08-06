@@ -249,7 +249,7 @@ export class TsTransformExecutor extends TransformExecutor<
       assert(column !== undefined, `Unknown input ${variableName}}`);
 
       const variableValue = column.at(rowIndex);
-      assert(variableValue != null);
+      assert(variableValue !== undefined);
 
       context.evaluationContext.setValueForReference(
         variableName,
