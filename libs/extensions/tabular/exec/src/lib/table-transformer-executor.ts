@@ -14,7 +14,7 @@ import {
   TsTransformExecutor,
   implementsStatic,
 } from '@jvalue/jayvee-execution';
-import { IOType, type PolarsInternal } from '@jvalue/jayvee-language-server';
+import { IOType } from '@jvalue/jayvee-language-server';
 import { pl } from 'nodejs-polars';
 
 export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
@@ -75,9 +75,8 @@ export abstract class TableTransformerExecutor extends AbstractBlockExecutor<
 export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
   public static readonly type = 'PolarsTableTransformer';
 
-  // HINT: old name : checkInputColumnsMatchTransformInputTypes
   // INFO: This function
-  // checks whether the input column valuetypes match with the transform input valuetypes
+  // checks whether the input column ValueTypes match with the transform input ValueTypes
   // returns a map from input names to column names
   //
   private checkInputColumnsMatchTransformInputTypes(
@@ -85,8 +84,8 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
     inputTable: R.PolarsTable,
     transformInputDetailsList: PortDetails[],
     context: R.ExecutionContext,
-  ): R.Result<Map<string, PolarsInternal>> {
-    const variableToColumnMap = new Map<string, PolarsInternal>();
+  ): R.Result<Map<string, pl.Expr>> {
+    const variableToColumnMap = new Map<string, pl.Expr>();
     for (let i = 0; i < inputColumnNames.length; ++i) {
       const inputColumnName = inputColumnNames[i];
       assert(inputColumnName !== undefined);

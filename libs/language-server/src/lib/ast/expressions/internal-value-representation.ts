@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type pl } from 'nodejs-polars';
-
 import {
   type BlockTypeProperty,
   type CellRangeLiteral,
@@ -17,8 +15,6 @@ import {
   isValuetypeAssignment,
 } from '../generated/ast';
 import type { WrapperFactoryProvider } from '../wrappers';
-
-export type PolarsInternal = pl.Expr;
 
 export type InternalValueRepresentation =
   | AtomicInternalValueRepresentation

@@ -5,6 +5,8 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
+import { type pl } from 'nodejs-polars';
+
 import { type ValidationContext } from '../../validation/validation-context';
 import {
   type BinaryExpression,
@@ -15,14 +17,13 @@ import { type WrapperFactoryProvider } from '../wrappers';
 
 import {
   evaluateExpression,
-  polarsEvaluateExpression,
+  jayveeExpressionToPolars,
 } from './evaluate-expression';
 import { type EvaluationContext } from './evaluation-context';
 import { EvaluationStrategy } from './evaluation-strategy';
 import {
   type InternalValueRepresentation,
   type InternalValueRepresentationTypeguard,
-  type PolarsInternal,
 } from './internal-value-representation';
 import {
   type BinaryExpressionOperator,
@@ -58,7 +59,7 @@ export interface PolarsOperatorEvaluator<
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): PolarsInternal | undefined;
+  ): pl.Expr | undefined;
 }
 
 export abstract class DefaultUnaryOperatorEvaluator<
@@ -76,9 +77,9 @@ export abstract class DefaultUnaryOperatorEvaluator<
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): PolarsInternal | undefined {
+  ): pl.Expr | undefined {
     assert(expression.operator === this.operator);
-    const operandValue = polarsEvaluateExpression(
+    const operandValue = jayveeExpressionToPolars(
       expression.expression,
       evaluationContext,
       wrapperFactories,
@@ -99,10 +100,10 @@ export abstract class DefaultUnaryOperatorEvaluator<
   ): T | undefined;
 
   protected polarsDoEvaluate(
-    _operand: PolarsInternal,
+    _operand: pl.Expr,
     expression: UnaryExpression,
     context: ValidationContext | undefined,
-  ): PolarsInternal | undefined {
+  ): pl.Expr | undefined {
     context?.accept('error', `${expression.operator} is not supported yet.`, {
       node: expression,
     });
@@ -154,11 +155,11 @@ export abstract class DefaultBinaryOperatorEvaluator<
   ): T | undefined;
 
   protected polarsDoEvaluate(
-    _left: PolarsInternal,
-    _right: PolarsInternal,
+    _left: pl.Expr,
+    _right: pl.Expr,
     expression: BinaryExpression,
     context: ValidationContext | undefined,
-  ): PolarsInternal | undefined {
+  ): pl.Expr | undefined {
     context?.accept('error', `${expression.operator} is not supported yet.`, {
       node: expression,
     });
@@ -211,9 +212,9 @@ export abstract class DefaultBinaryOperatorEvaluator<
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): PolarsInternal | undefined {
+  ): pl.Expr | undefined {
     assert(expression.operator === this.operator);
-    const leftValue = polarsEvaluateExpression(
+    const leftValue = jayveeExpressionToPolars(
       expression.left,
       evaluationContext,
       wrapperFactories,
@@ -223,7 +224,7 @@ export abstract class DefaultBinaryOperatorEvaluator<
     if (strategy === EvaluationStrategy.LAZY && leftValue === undefined) {
       return undefined;
     }
-    const rightValue = polarsEvaluateExpression(
+    const rightValue = jayveeExpressionToPolars(
       expression.right,
       evaluationContext,
       wrapperFactories,
@@ -262,11 +263,11 @@ export abstract class BooleanShortCircuitOperatorEvaluator
   ): boolean;
 
   protected polarsDoEvaluate(
-    _left: PolarsInternal,
-    _right: PolarsInternal,
+    _left: pl.Expr,
+    _right: pl.Expr,
     expression: BinaryExpression,
     context: ValidationContext | undefined,
-  ): PolarsInternal | undefined {
+  ): pl.Expr | undefined {
     context?.accept('error', `${expression.operator} is not supported yet.`, {
       node: expression,
     });
@@ -319,9 +320,9 @@ export abstract class BooleanShortCircuitOperatorEvaluator
     wrapperFactories: WrapperFactoryProvider,
     strategy: EvaluationStrategy,
     validationContext: ValidationContext | undefined,
-  ): PolarsInternal | undefined {
+  ): pl.Expr | undefined {
     assert(expression.operator === this.operator);
-    const left = polarsEvaluateExpression(
+    const left = jayveeExpressionToPolars(
       expression.left,
       evaluationContext,
       wrapperFactories,
@@ -333,7 +334,7 @@ export abstract class BooleanShortCircuitOperatorEvaluator
       return undefined;
     }
 
-    const rightValue = polarsEvaluateExpression(
+    const rightValue = jayveeExpressionToPolars(
       expression.right,
       evaluationContext,
       wrapperFactories,

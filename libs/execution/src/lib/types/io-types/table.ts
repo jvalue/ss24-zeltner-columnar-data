@@ -10,7 +10,6 @@ import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
   IOType,
   type InternalValueRepresentation,
-  type PolarsInternal,
   type ValueType,
   type ValueTypeProvider,
 } from '@jvalue/jayvee-language-server';
@@ -118,7 +117,7 @@ export class PolarsTable extends Table {
     return new PolarsTable(ndf, this.valueTypeProvider);
   }
 
-  withColumnFromInternal(expr: PolarsInternal): PolarsTable {
+  withColumnFromInternal(expr: pl.Expr): PolarsTable {
     const ndf = this.df.withColumn(expr);
     return new PolarsTable(ndf, this.valueTypeProvider);
   }

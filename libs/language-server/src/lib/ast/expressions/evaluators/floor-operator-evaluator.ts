@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type PolarsInternal } from '../internal-value-representation';
+import { type pl } from 'nodejs-polars';
+
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -17,7 +18,7 @@ export class FloorOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     return Math.floor(operandValue);
   }
 
-  override polarsDoEvaluate(col: PolarsInternal): PolarsInternal {
+  override polarsDoEvaluate(col: pl.Expr): pl.Expr {
     return col.floor();
   }
 }

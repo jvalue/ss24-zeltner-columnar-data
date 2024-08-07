@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2023 Friedrich-Alexander-Universitat Erlangen-Nurnberg
 //
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type PolarsInternal } from '../internal-value-representation';
+import { type pl } from 'nodejs-polars';
+
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -16,10 +17,7 @@ export class SubtractionOperatorEvaluator extends DefaultBinaryOperatorEvaluator
   override doEvaluate(leftValue: number, rightValue: number): number {
     return leftValue - rightValue;
   }
-  override polarsDoEvaluate(
-    left: PolarsInternal,
-    right: PolarsInternal,
-  ): PolarsInternal {
+  override polarsDoEvaluate(left: pl.Expr, right: pl.Expr): pl.Expr {
     return left.minus(right);
   }
 }

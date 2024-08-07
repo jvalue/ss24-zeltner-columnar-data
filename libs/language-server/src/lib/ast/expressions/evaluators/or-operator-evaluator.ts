@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type PolarsInternal } from '../internal-value-representation';
+import { type pl } from 'nodejs-polars';
+
 import { BooleanShortCircuitOperatorEvaluator } from '../operator-evaluator';
 
 export class OrOperatorEvaluator extends BooleanShortCircuitOperatorEvaluator {
@@ -21,10 +22,7 @@ export class OrOperatorEvaluator extends BooleanShortCircuitOperatorEvaluator {
     return leftValue || rightValue;
   }
 
-  override polarsDoEvaluate(
-    leftValue: PolarsInternal,
-    rightValue: PolarsInternal,
-  ): PolarsInternal {
+  override polarsDoEvaluate(leftValue: pl.Expr, rightValue: pl.Expr): pl.Expr {
     return leftValue.or(rightValue);
   }
 }

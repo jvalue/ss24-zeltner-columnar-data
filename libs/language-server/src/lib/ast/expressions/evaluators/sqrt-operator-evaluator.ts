@@ -5,9 +5,10 @@
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { strict as assert } from 'assert';
 
+import { type pl } from 'nodejs-polars';
+
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type UnaryExpression } from '../../generated/ast';
-import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -37,8 +38,8 @@ export class SqrtOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     return resultingValue;
   }
 
-  protected override polarsDoEvaluate(operand: PolarsInternal): PolarsInternal {
-    // HACK: Typst does not have a root expression
+  protected override polarsDoEvaluate(operand: pl.Expr): pl.Expr {
+    // HACK: Polars does not have a root expression
     return operand.pow(1 / 2);
   }
 }

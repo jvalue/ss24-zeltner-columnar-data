@@ -2,9 +2,10 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type pl } from 'nodejs-polars';
+
 import { type ValidationContext } from '../../../validation/validation-context';
 import { type BinaryExpression } from '../../generated/ast';
-import { type PolarsInternal } from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -40,10 +41,7 @@ export class ModuloOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
     return resultingValue;
   }
 
-  override polarsDoEvaluate(
-    left: PolarsInternal,
-    right: PolarsInternal,
-  ): PolarsInternal | undefined {
+  override polarsDoEvaluate(left: pl.Expr, right: pl.Expr): pl.Expr {
     return left.modulo(right);
   }
 }

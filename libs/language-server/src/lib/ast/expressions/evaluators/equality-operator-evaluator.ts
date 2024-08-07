@@ -2,10 +2,9 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import {
-  type InternalValueRepresentation,
-  type PolarsInternal,
-} from '../internal-value-representation';
+import { type pl } from 'nodejs-polars';
+
+import { type InternalValueRepresentation } from '../internal-value-representation';
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { INTERNAL_VALUE_REPRESENTATION_TYPEGUARD } from '../typeguards';
 
@@ -27,10 +26,7 @@ export class EqualityOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
   ): boolean {
     return left === right;
   }
-  override polarsDoEvaluate(
-    left: PolarsInternal,
-    right: PolarsInternal,
-  ): PolarsInternal {
+  override polarsDoEvaluate(left: pl.Expr, right: pl.Expr): pl.Expr {
     return left.eq(right);
   }
 }

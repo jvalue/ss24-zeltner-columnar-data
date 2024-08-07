@@ -8,14 +8,14 @@ import { strict as assert } from 'assert';
 import {
   type EvaluationContext,
   type InternalValueRepresentation,
-  type PolarsInternal,
   type TransformDefinition,
   type TransformOutputAssignment,
   type TransformPortDefinition,
   type ValueType,
   evaluateExpression,
-  polarsEvaluateExpression,
+  jayveeExpressionToPolars,
 } from '@jvalue/jayvee-language-server';
+import { type pl } from 'nodejs-polars';
 
 import { type ExecutionContext } from '../execution-context';
 import { isValidValueRepresentation } from '../types';
@@ -85,12 +85,12 @@ export abstract class TransformExecutor<I, O> {
 }
 
 export class PolarsTransformExecutor extends TransformExecutor<
-  Map<string, PolarsInternal>, // HINT: Map<variable name in the transform, column name>
-  PolarsInternal
+  Map<string, pl.Expr>, // HINT: Map<variable name in the transform, column name>
+  pl.Expr
 > {
   private static addInputColumnsToContext(
     inputDetailsList: readonly PortDetails[],
-    variableToColumnName: ReadonlyMap<string, PolarsInternal>,
+    variableToColumnName: ReadonlyMap<string, pl.Expr>,
     evaluationContext: EvaluationContext,
   ) {
     inputDetailsList.forEach((inputDetail) => {
@@ -102,9 +102,9 @@ export class PolarsTransformExecutor extends TransformExecutor<
   }
 
   protected override doExecuteTransform(
-    variableToColumnName: Map<string, PolarsInternal>,
+    variableToColumnName: Map<string, pl.Expr>,
     context: ExecutionContext,
-  ): PolarsInternal | undefined {
+  ): pl.Expr | undefined {
     const inputDetails = this.getInputDetails();
     const outputDetails = this.getOutputDetails();
 
@@ -114,9 +114,9 @@ export class PolarsTransformExecutor extends TransformExecutor<
       context.evaluationContext,
     );
 
-    let expr: PolarsInternal | undefined = undefined;
+    let expr: pl.Expr | undefined = undefined;
     try {
-      expr = polarsEvaluateExpression(
+      expr = jayveeExpressionToPolars(
         this.getOutputAssignment().expression,
         context.evaluationContext,
         context.wrapperFactories,

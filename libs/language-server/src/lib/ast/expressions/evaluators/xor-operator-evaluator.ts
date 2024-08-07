@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type PolarsInternal } from '../internal-value-representation';
+import { type pl } from 'nodejs-polars';
+
 import { DefaultBinaryOperatorEvaluator } from '../operator-evaluator';
 import { BOOLEAN_TYPEGUARD } from '../typeguards';
 
@@ -17,11 +18,7 @@ export class XorOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
   override doEvaluate(leftValue: boolean, rightValue: boolean): boolean {
     return (leftValue && !rightValue) || (!leftValue && rightValue);
   }
-  override polarsDoEvaluate(
-    leftValue: PolarsInternal,
-    rightValue: PolarsInternal,
-  ): PolarsInternal {
-    // HACK: There should be an xor expression in polars
+  override polarsDoEvaluate(leftValue: pl.Expr, rightValue: pl.Expr): pl.Expr {
     return leftValue.and(rightValue.not()).or(leftValue.not().and(rightValue));
   }
 }

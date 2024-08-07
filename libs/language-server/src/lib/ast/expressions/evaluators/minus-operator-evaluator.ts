@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type PolarsInternal } from '../internal-value-representation';
+import { type pl } from 'nodejs-polars';
+
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
 import { NUMBER_TYPEGUARD } from '../typeguards';
 
@@ -16,7 +17,7 @@ export class MinusOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   override doEvaluate(operandValue: number): number {
     return -operandValue;
   }
-  protected override polarsDoEvaluate(operand: PolarsInternal): PolarsInternal {
+  protected override polarsDoEvaluate(operand: pl.Expr): pl.Expr {
     // HACK: Polars does not support neg
     return operand.mul(-1);
   }

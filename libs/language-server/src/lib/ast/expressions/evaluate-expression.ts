@@ -33,10 +33,7 @@ import { type ValueType, type WrapperFactoryProvider } from '../wrappers';
 
 import { type EvaluationContext } from './evaluation-context';
 import { EvaluationStrategy } from './evaluation-strategy';
-import {
-  type InternalValueRepresentation,
-  type PolarsInternal,
-} from './internal-value-representation';
+import { type InternalValueRepresentation } from './internal-value-representation';
 import { type PolarsOperatorEvaluator } from './operator-evaluator';
 import {
   INTERNAL_VALUE_REPRESENTATION_TYPEGUARD,
@@ -116,13 +113,13 @@ function getEvaluator(
   assertUnreachable(expression);
 }
 
-export function polarsEvaluateExpression(
+export function jayveeExpressionToPolars(
   expression: Expression | undefined,
   evaluationContext: EvaluationContext,
   wrapperFactories: WrapperFactoryProvider,
   context: ValidationContext | undefined = undefined,
   strategy: EvaluationStrategy = EvaluationStrategy.LAZY,
-): PolarsInternal | undefined {
+): pl.Expr | undefined {
   if (expression === undefined) {
     return undefined;
   }
