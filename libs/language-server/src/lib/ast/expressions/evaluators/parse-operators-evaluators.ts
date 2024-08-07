@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { type pl } from 'nodejs-polars';
+
 import { type ValueTypeProvider } from '../../wrappers';
 import { DefaultUnaryOperatorEvaluator } from '../operator-evaluator';
 import { STRING_TYPEGUARD } from '../typeguards';
@@ -15,6 +17,11 @@ export class AsTextOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   }
   override doEvaluate(operandValue: string): string {
     return this.valueTypeProvider.Primitives.Text.fromString(operandValue);
+  }
+  override polarsDoEvaluate(operand: pl.Expr): pl.Expr {
+    return operand.cast(
+      this.valueTypeProvider.Primitives.Text.toPolarsDataType(),
+    );
   }
 }
 
@@ -33,6 +40,11 @@ export class AsDecimalOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     }
     return dec;
   }
+  override polarsDoEvaluate(operand: pl.Expr): pl.Expr {
+    return operand.cast(
+      this.valueTypeProvider.Primitives.Decimal.toPolarsDataType(),
+    );
+  }
 }
 
 export class AsIntegerOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
@@ -49,6 +61,11 @@ export class AsIntegerOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
       throw new Error(`Could not parse "${operandValue}" into an Integer`);
     }
     return int;
+  }
+  override polarsDoEvaluate(operand: pl.Expr): pl.Expr {
+    return operand.cast(
+      this.valueTypeProvider.Primitives.Integer.toPolarsDataType(),
+    );
   }
 }
 

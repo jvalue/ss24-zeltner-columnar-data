@@ -39,7 +39,7 @@ export class SqrtOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
   }
 
   protected override polarsDoEvaluate(operand: pl.Expr): pl.Expr {
-    // HACK: Polars does not have a root expression
+    // HACK: Polars does not have a sqrt expression
     return operand.pow(1 / 2);
   }
 }

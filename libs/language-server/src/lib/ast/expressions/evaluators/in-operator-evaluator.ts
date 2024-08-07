@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { pl } from 'nodejs-polars';
+
 import {
   type InternalValueRepresentation,
   type InternalValueRepresentationTypeguard,
@@ -26,6 +28,10 @@ export class InOperatorEvaluator extends DefaultBinaryOperatorEvaluator<
     right: (string | number)[],
   ): boolean {
     return right.includes(left);
+  }
+
+  protected override polarsDoEvaluate(left: pl.Expr, right: pl.Expr): pl.Expr {
+    return left.isIn(right);
   }
 }
 
