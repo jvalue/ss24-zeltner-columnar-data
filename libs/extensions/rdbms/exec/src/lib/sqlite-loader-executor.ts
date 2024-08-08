@@ -119,7 +119,7 @@ export class RustSQLiteLoaderExecutor extends SQLiteLoaderExecutor<R.PolarsTable
     context: R.ExecutionContext,
   ): Promise<R.Result<R.None>> {
     try {
-      const ipcName = 'df.ipc';
+      const ipcName = `dataframe.arrow`;
       context.logger.logInfo(`Writing table ${tableName} to ${ipcName}`);
       table.writeIpcTo(ipcName);
       loadSqlite(ipcName, tableName, file, dropTable);
