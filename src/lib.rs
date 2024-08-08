@@ -11,7 +11,7 @@ use std::fs;
 
 fn ipc_reader(path: &str) -> Result<FileReader<fs::File>, napi::Error> {
   println!("Opening ArrowIPC file {path}");
-  let file = fs::File::open(path).map_err(|e| napi::Error::from(e))?;
+  let file = fs::File::open(path).map_err(napi::Error::from)?;
   FileReader::try_new(file, None).map_err(|e| {
     napi::Error::<Status>::from_reason(format!("{path} is not a valid arrow ipc file: {e}"))
   })
@@ -20,7 +20,7 @@ fn ipc_reader(path: &str) -> Result<FileReader<fs::File>, napi::Error> {
 fn db_connection(sqlite_path: &str) -> Result<SQLiteConnection, napi::Error> {
   println!("Opening database file {sqlite_path}");
   rusqlite::Connection::open(sqlite_path)
-    .map(|conn| SQLiteConnection::new(conn))
+    .map(SQLiteConnection::new)
     .map_err(|e| {
       napi::Error::<Status>::from_reason(format!(
         "Could not create a connection to the sqlite database: {e}"
