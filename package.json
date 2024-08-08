@@ -1,5 +1,5 @@
 {
-  "name": "sqlite-loader-rust",
+  "name": "sqlite-loader-lib",
   "version": "1.0.0",
   "description": "Template project for writing node package with napi-rs",
   "main": "index.js",
@@ -18,7 +18,7 @@
     "index.js"
   ],
   "napi": {
-    "name": "sqlite-loader-rust",
+    "name": "sqlite-loader-lib",
     "triples": {
       "defaults": true,
       "additional": [
@@ -109,4 +109,3 @@
   },
   "packageManager": "yarn@4.2.2"
 }
-
