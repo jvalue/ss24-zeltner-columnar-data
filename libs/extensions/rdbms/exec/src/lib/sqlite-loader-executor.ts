@@ -13,7 +13,7 @@ import {
   implementsStatic,
 } from '@jvalue/jayvee-execution';
 import { IOType } from '@jvalue/jayvee-language-server';
-import { loadSqlite } from 'sqlite-loader-rust';
+import { loadSqlite } from 'sqlite-loader-lib';
 import sqlite3 from 'sqlite3';
 
 export abstract class SQLiteLoaderExecutor<
