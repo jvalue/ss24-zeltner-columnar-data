@@ -95,7 +95,7 @@ struct Cli {
     transformations: Vec<TransformAmount>,
 
     #[arg(short, long)]
-    #[clap(default_value_t = 100)]
+    #[clap(default_value_t = 10)]
     /// Repeat all combinations this many times
     repetitions: usize,
 

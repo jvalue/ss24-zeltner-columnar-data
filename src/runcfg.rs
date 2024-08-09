@@ -48,7 +48,7 @@ fn source(repo: &Path, n_lines: Option<usize>) -> PathBuf {
         .output()
         .expect("Could not execute command");
     target_file
-    // HINT: returns something like example/data/l.csv
+    // HINT: returns something like example/data/l-100.csv
 }
 
 fn example(transformations: TransformAmount, backend: Backend) -> String {
