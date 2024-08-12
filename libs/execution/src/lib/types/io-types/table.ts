@@ -45,7 +45,6 @@ export abstract class Table implements IOTypeImplementation<IOType.TABLE> {
   abstract withColumn(column: TableColumn): Table;
   abstract get nRows(): number;
   abstract get nColumns(): number;
-  abstract hasColumn(name: string): boolean;
   abstract get columns(): ReadonlyArray<TableColumn>;
   abstract getColumn(name: string): TableColumn | undefined;
   abstract clone(): Table;
@@ -128,15 +127,6 @@ export class PolarsTable extends Table {
 
   override get nColumns(): number {
     return this.df.width;
-  }
-
-  override hasColumn(name: string): boolean {
-    try {
-      this.df.getColumn(name);
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   override get columns(): readonly PolarsTableColumn[] {
@@ -262,7 +252,7 @@ export class TsTable extends Table {
     return this._columns.size;
   }
 
-  override hasColumn(name: string): boolean {
+  hasColumn(name: string): boolean {
     return this._columns.has(name);
   }
 

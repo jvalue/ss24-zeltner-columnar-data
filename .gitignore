@@ -61,6 +61,7 @@ Thumbs.db
 
 # Arrow ipc files
 *.ipc
+*.arrow
 
 # Data file
 max.csv

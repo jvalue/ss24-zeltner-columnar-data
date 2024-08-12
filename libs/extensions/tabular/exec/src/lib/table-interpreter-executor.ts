@@ -242,7 +242,7 @@ export class PolarsTableInterpreterExecutor extends TableInterpeterExecutor {
       if (cell === undefined) {
         throw new Error('columnEntries had more elements than the sheet data');
       }
-      const vt = dtype.equals(pl.String)
+      const vt = dtype.equals(pl.Utf8)
         ? context.valueTypeProvider.Primitives.Text
         : columnEntry.valueType;
       return this.parseAndValidateValue(cell, vt, context);
