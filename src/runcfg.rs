@@ -51,11 +51,6 @@ fn source(repo: &Path, n_lines: Option<usize>) -> PathBuf {
     // HINT: returns something like example/data/l-100.csv
 }
 
-fn example(transformations: TransformAmount, backend: Backend) -> String {
-    "example:".to_string() + &[backend.example(), transformations.example()].join("-")
-    // HINT: returns something like example:plobrs-ma
-}
-
 fn destination(
     transformations: TransformAmount,
     backend: Backend,
@@ -79,7 +74,6 @@ pub struct Runcfg {
     transformations: TransformAmount,
     backend: Backend,
     n_lines: Option<usize>,
-    example: String,
     source: PathBuf,
     destination: PathBuf,
     show_output: bool,
@@ -99,7 +93,6 @@ impl Runcfg {
             transformations,
             backend,
             n_lines,
-            example: example(transformations, backend),
             source: source(repo, n_lines),
             destination: destination(transformations, backend, n_lines),
             show_output,
@@ -107,20 +100,8 @@ impl Runcfg {
         }
     }
 
-    pub fn example(&self) -> &str {
-        &self.example
-    }
-
-    pub fn source(&self) -> &Path {
-        &self.source
-    }
-
     pub fn destination(&self) -> &Path {
         &self.destination
-    }
-
-    pub fn repo(&self) -> &PathBuf {
-        &self.repo
     }
 
     pub fn transformations(&self) -> TransformAmount {
@@ -133,10 +114,6 @@ impl Runcfg {
 
     pub fn n_lines(&self) -> Option<usize> {
         self.n_lines
-    }
-
-    pub fn show_output(&self) -> bool {
-        self.show_output
     }
 
     pub fn filename(&self) -> String {
@@ -192,10 +169,6 @@ impl Runcfg {
         let out = child.wait().expect("no interrupts");
         let dur = now.elapsed();
         out.success().then_some(dur).ok_or(dur)
-    }
-
-    pub fn hide_errors(&self) -> bool {
-        self.hide_errors
     }
 }
 
