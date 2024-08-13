@@ -93,7 +93,7 @@ export class TsTableColumn<
   }
 
   override clone(): TsTableColumn<T> {
-    // HACK: This feels wrong, but I didn't find any other solution
+    // HACK: This is not optimal, but we didn't find any other solution
     const clonedName: unknown = JSON.parse(JSON.stringify(this._name));
     assert(typeof clonedName === 'string');
     const clonedValues: unknown = JSON.parse(JSON.stringify(this._values));

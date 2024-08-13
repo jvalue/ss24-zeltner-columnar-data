@@ -53,7 +53,8 @@ export class ValueTypeProvider {
     } else if (dtype.equals(pl.String) || dtype.equals(pl.Utf8)) {
       return this.Primitives.Text;
     }
-    // TODO:
+    // TODO: We were not able to implement these DataTypes inside the
+    // thesis timeframe:
     // pl.Categorical
     // pl.Date
     // pl.DateTime

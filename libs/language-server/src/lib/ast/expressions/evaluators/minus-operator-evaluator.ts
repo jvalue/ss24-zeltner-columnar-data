@@ -18,7 +18,6 @@ export class MinusOperatorEvaluator extends DefaultUnaryOperatorEvaluator<
     return -operandValue;
   }
   protected override polarsDoEvaluate(operand: pl.Expr): pl.Expr {
-    // HACK: Polars does not support neg
     return operand.mul(-1);
   }
 }
