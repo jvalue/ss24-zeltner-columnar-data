@@ -110,14 +110,12 @@ export class PolarsTable extends Table {
     )});`;
   }
 
-  override withColumn(column: PolarsTableColumn): PolarsTable {
-    const ndf = this.df.withColumn(column.series);
+  override withColumn(column: PolarsTableColumn): PolarsTable;
+  withColumn(expr: pl.Expr): PolarsTable;
+  withColumn(column: PolarsTableColumn | pl.Expr): PolarsTable {
+    const tmp = 'series' in column ? column.series : column;
+    const ndf = this.df.withColumn(tmp);
 
-    return new PolarsTable(ndf, this.valueTypeProvider);
-  }
-
-  withColumnFromInternal(expr: pl.Expr): PolarsTable {
-    const ndf = this.df.withColumn(expr);
     return new PolarsTable(ndf, this.valueTypeProvider);
   }
 

@@ -174,9 +174,7 @@ export class PolarsTableTransformerExecutor extends TableTransformerExecutor {
       });
     }
 
-    const newTable = inputTable.withColumnFromInternal(
-      expr.alias(outputColumnName),
-    );
+    const newTable = inputTable.withColumn(expr.alias(outputColumnName));
     return R.ok(newTable);
   }
 }
