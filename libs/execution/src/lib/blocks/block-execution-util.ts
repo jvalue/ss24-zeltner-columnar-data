@@ -99,7 +99,6 @@ export async function executeBlock(
       executionContext.runOptions.usePolars ||
         executionContext.runOptions.useRusqlite,
       executionContext.runOptions.useRusqlite,
-      executionContext.logger,
     );
 
   const startTime = new Date();
